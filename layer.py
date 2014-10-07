@@ -27,15 +27,10 @@ class Linear(Layer):
         self.biases = np.zeros((neurons, 1))
 
     def feed_forward(self, inputs):
-        # print "weights shape {}".format(np.shape(self.weights))
-        # print "inputs shape {}".format(np.array(inputs).shape)
-        # print "biases shape {}".format(np.shape(self.biases))
         return np.rollaxis(np.dot(self.weights, inputs), 1) + self.biases
 
     def feed_backward(self, gradients):
-        # print "weights.T shape {}".format(self.weights.T.shape)
-        # print "gradients shape {}".format(gradients.shape)
-        return np.rollaxis(np.dot(self.weights.T, gradients), 1)  # check this
+        return np.rollaxis(np.dot(self.weights.T, gradients), 1)
 
 
 class Sigmoid(Linear):

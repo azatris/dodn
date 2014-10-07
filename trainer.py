@@ -62,14 +62,9 @@ class Trainer(object):
         activations = self.forward_propagate(network, xs)
         nabla_b, nabla_w = self.backward_propagate(network, ys, activations)
         iterable = zip(network.layers, nabla_b, nabla_w)
-        # print "iterable shape {}".format(np.shape(iterable))
-        # print "layer.biases {}, nabla {}".format(np.shape(network.layers[1].biases), np.shape(nabla_b))
         for layer, layer_nabla_b, layer_nabla_w in iterable:
-            # print "layer weight shape {}".format(layer.weights.shape)
-            # print "layer nabla w shape {}".format(np.array(layer_nabla_w).shape)
             sum_layer_nabla_w = np.array(layer_nabla_w).sum(axis=0).T
             sum_layer_nabla_b = np.array(layer_nabla_b).sum(axis=0)
-            # print "weights {}, sum_nabla {}".format(np.shape(layer.weights), np.shape(sum_layer_nabla_w))
             layer.weights = np.array([
                 w - (learning_rate/len(batch))*nw
                 for w, nw in zip(layer.weights, sum_layer_nabla_w)
@@ -78,31 +73,22 @@ class Trainer(object):
                 b - (learning_rate/len(batch))*nb
                 for b, nb in zip(layer.biases, sum_layer_nabla_b)
             ])
-        # print "layer.biases {}, nabla {}".format(np.shape(network.layers[1].biases), np.shape(np.array(layer_nabla_b).sum(axis=0)))
 
 
     @staticmethod
     def forward_propagate(network, xs):
         batch_activation = xs
-        # print "batch activation shape {}".format(np.shape(batch_activation))
-        batch_activations = [xs]  # layer by layer
+        batch_activations = [xs]
         for layer in network.layers:
-            # not sure if this broadcasts over all xs
             batch_activation = layer.feed_forward(batch_activation)
             batch_activations.append(batch_activation)
         return batch_activations
 
     def backward_propagate(self, network, yz, batch_activations):
-        # print "weights shape {}".format(np.shape(self.weights))
-        # print "biases shape {}".format(np.shape(self.biases))
         nabla_b = [np.zeros(layer.biases.shape) for layer in network.layers]
         nabla_w = [np.zeros(layer.weights.shape) for layer in network.layers]
 
-        # last layer
         batch_delta = self.cost.delta(batch_activations[-1], yz)
-        # print "1delta shape {}".format(np.array(batch_delta).shape)
-        # print "1activation.T shape {}".format(batch_activations[-1].T.shape)
-        # print batch_delta[0]
         nabla_b[-1] = batch_delta
         nabla_w[-1] = [
             np.dot(delta, activations.T)
@@ -110,12 +96,9 @@ class Trainer(object):
             in zip(batch_delta, batch_activations[-1])
         ]
 
-        # subsequent layers
         for idx, layer in reversed(list(enumerate(network.layers))):
             batch_delta = layer.feed_backward(batch_delta)
-            # print "delta shape {}".format(np.array(batch_delta).shape)
-            # print "activation.T shape {}".format(batch_activations[idx-2].T.shape)
-            nabla_b[idx-2] = batch_delta  # check for out of bounds errors
+            nabla_b[idx-2] = batch_delta
             nabla_w[idx-2] = [
                 np.dot(delta, activations.T)
                 for delta, activations
