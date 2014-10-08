@@ -25,6 +25,7 @@ class Linear(Layer):
             -weight_magnitude, weight_magnitude, (neurons, inputs_per_neuron)
         )
         self.biases = np.zeros((neurons, 1))
+        super(Layer, self).__init__()
 
     def feed_forward(self, inputs):
         return np.rollaxis(np.dot(self.weights, inputs), 1) + self.biases
