@@ -42,7 +42,7 @@ class Sigmoid(Linear):
 
     def feed_forward(self, inputs):
         linear_activations = super(Sigmoid, self).feed_forward(inputs)
-        return 1.0 / (1.0 + np.exp(-linear_activations))  # check this
+        return 1.0 / (1.0 + np.exp(-linear_activations))
 
     def feed_backward(self, gradients):
         sigmoid_primes = gradients*(1.0 - gradients)

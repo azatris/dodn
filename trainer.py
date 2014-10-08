@@ -1,3 +1,4 @@
+from numpy.ma import average
 from evaluator import Evaluator
 from utils import CrossEntropyCost
 
@@ -42,15 +43,15 @@ class Trainer(object):
         nabla_b, nabla_w = self.backward_propagate(network, ys, activations)
         iterable = zip(network.layers, nabla_b, nabla_w)
         for layer, layer_nabla_b, layer_nabla_w in iterable:
-            sum_layer_nabla_w = np.array(layer_nabla_w).sum(axis=0).T
-            sum_layer_nabla_b = np.array(layer_nabla_b).sum(axis=0)
             layer.weights = np.array([
                 w - (learning_rate/len(batch))*nw
-                for w, nw in zip(layer.weights, sum_layer_nabla_w)
+                for w, nw
+                in zip(layer.weights, average(layer_nabla_w, axis=0).T)
             ])
             layer.biases = np.array([
                 b - (learning_rate/len(batch))*nb
-                for b, nb in zip(layer.biases, sum_layer_nabla_b)
+                for b, nb
+                in zip(layer.biases, average(layer_nabla_b, axis=0))
             ])
 
     @staticmethod
