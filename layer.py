@@ -28,9 +28,11 @@ class Linear(Layer):
         super(Layer, self).__init__()
 
     def feed_forward(self, inputs):
+        # needs reordering of axis (1 -> 0)
         return np.dot(self.weights, inputs) + self.biases
 
     def feed_backward(self, gradients):
+        # needs reordering of axis (1 -> 0)
         return np.dot(self.weights.T, gradients)
 
 

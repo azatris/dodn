@@ -72,6 +72,7 @@ class Trainer(object):
         batch_delta = self.cost.delta(batch_activations[-1], yz)
         nabla_b[-1] = batch_delta
         nabla_w[-1] = [
+            # needs to be np.dot(delta, activations.T)
             np.dot(activations, delta)
             for activations, delta
             in zip(batch_activations[-1], batch_delta)
@@ -81,6 +82,7 @@ class Trainer(object):
             batch_delta = layer.feed_backward(batch_delta)
             nabla_b[idx-2] = batch_delta
             nabla_w[idx-2] = [
+                # needs to be np.dot(delta, activations.T)
                 np.dot(activations, delta)
                 for activations, delta
                 in zip(batch_activations[idx-2], batch_delta)
