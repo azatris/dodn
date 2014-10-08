@@ -1,19 +1,9 @@
+from evaluator import Evaluator
+from utils import CrossEntropyCost
+
 __author__ = 'Azatris'
 
 import numpy as np
-
-
-class CrossEntropyCost:
-    def __init__(self):
-        pass
-
-    @staticmethod
-    def fn(a, y):
-        return np.nan_to_num(np.sum(-y*np.log(a) - (1 - y)*np.log(1 - a)))
-
-    @staticmethod
-    def delta(a, y):
-        return a - y
 
 
 class Trainer(object):
@@ -28,7 +18,13 @@ class Trainer(object):
             monitor_training_cost=False,
             monitor_training_accuracy=False):
 
-        for j in xrange(epochs):
+        evaluator = Evaluator(
+            self.cost, training_data, evaluation_data,
+            monitor_training_cost, monitor_training_accuracy,
+            monitor_evaluation_cost, monitor_evaluation_accuracy
+        )
+
+        for epoch in xrange(epochs):
             np.random.shuffle(training_data)
             total_training_data = len(training_data)
             mini_batches = [
@@ -38,24 +34,7 @@ class Trainer(object):
             for mini_batch in mini_batches:
                 self.update(network, mini_batch, learning_rate)
 
-            print "Epoch %s training complete" % j
-            if monitor_training_cost:
-                cost = self.total_cost(training_data, network)
-                print "Cost on training data: {}".format(cost)
-            if monitor_training_accuracy:
-                accuracy = self.accuracy(training_data, network, convert=True)
-                print "Accuracy on training data: {} / {}".format(
-                    accuracy, len(training_data)
-                )
-            if monitor_evaluation_cost:
-                cost = self.total_cost(evaluation_data, network, convert=True)
-                print "Cost on evaluation data: {}".format(cost)
-            if monitor_evaluation_accuracy:
-                accuracy = self.accuracy(evaluation_data, network)
-                print "Accuracy on evaluation data: {} / {}".format(
-                    accuracy, len(evaluation_data)
-                )
-            print
+            evaluator.monitor(epoch, network)
 
     def update(self, network, batch, learning_rate):
         xs, ys = map(list, zip(*batch))
@@ -73,7 +52,6 @@ class Trainer(object):
                 b - (learning_rate/len(batch))*nb
                 for b, nb in zip(layer.biases, sum_layer_nabla_b)
             ])
-
 
     @staticmethod
     def forward_propagate(network, xs):
@@ -106,40 +84,3 @@ class Trainer(object):
             ]
 
         return nabla_b, nabla_w
-
-    def accuracy(self, data, network, convert=False):
-        if convert:
-            results = [
-                (np.argmax(self.feed_forward(network, x)), np.argmax(y))
-                for (x, y) in data
-            ]
-        else:
-            results = [
-                (np.argmax(self.feed_forward(network, x)), y)
-                for (x, y) in data
-            ]
-        return sum(int(x == y) for (x, y) in results)
-
-    @staticmethod
-    def feed_forward(network, x):
-        a = [x]
-        for layer in network.layers:
-            a = layer.feed_forward(a)
-        return a
-
-    @staticmethod
-    def vectorized_result(j):
-        e = np.zeros((10, 1))
-        e[j] = 1.0
-        return e
-
-    def total_cost(self, data, network, convert=False):
-        cost = 0.0
-        for x, y in data:
-            a = self.feed_forward(network, x)
-            if convert:
-                y = self.vectorized_result(y)
-            cost += self.cost.fn(a, y)/len(data)
-        return cost
-
-

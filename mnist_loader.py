@@ -1,3 +1,5 @@
+from utils import Utils
+
 __author__ = 'Azatris'
 
 import cPickle
@@ -45,7 +47,7 @@ def load_data_revamped():
     raw_tr_data, raw_va_data, raw_te_data = load_data()
 
     training_inputs = [np.reshape(x, (784, 1)) for x in raw_tr_data[0]]
-    training_results = [vectorize_digit(y) for y in raw_tr_data[1]]
+    training_results = [Utils.vectorize_digit(y) for y in raw_tr_data[1]]
     training_data = zip(training_inputs, training_results)
 
     validation_inputs = [np.reshape(x, (784, 1)) for x in raw_va_data[0]]
@@ -55,13 +57,3 @@ def load_data_revamped():
     test_data = zip(test_inputs, raw_te_data[1])
 
     return training_data, validation_data, test_data
-
-
-def vectorize_digit(i):
-    """ Return a 10-dimensional one-hot vector with a 1.0 in the ith
-    position and zeroes elsewhere.  This is used to convert a digit into a 
-    corresponding desired output from the neural network."""
-
-    vectorized_digit = np.zeros((10, 1))
-    vectorized_digit[i] = 1.0
-    return vectorized_digit
