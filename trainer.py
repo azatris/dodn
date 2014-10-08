@@ -1,3 +1,4 @@
+from numpy.ma import average
 from evaluator import Evaluator
 from utils import CrossEntropyCost
 
@@ -37,20 +38,22 @@ class Trainer(object):
             evaluator.monitor(epoch, network)
 
     def update(self, network, batch, learning_rate):
-        xs, ys = map(list, zip(*batch))
+        xs, ys = map(list, zip(*batch))  # perhaps load data in differently?
         activations = self.forward_propagate(network, xs)
         nabla_b, nabla_w = self.backward_propagate(network, ys, activations)
         iterable = zip(network.layers, nabla_b, nabla_w)
         for layer, layer_nabla_b, layer_nabla_w in iterable:
-            sum_layer_nabla_w = np.array(layer_nabla_w).sum(axis=0).T
-            sum_layer_nabla_b = np.array(layer_nabla_b).sum(axis=0)
+            # first needs to be transposed
+            average_layer_nabla_w = average(layer_nabla_w, axis=0)
+            average_layer_nabla_b = average(layer_nabla_b, axis=0)
+
             layer.weights = np.array([
-                w - (learning_rate/len(batch))*nw
-                for w, nw in zip(layer.weights, sum_layer_nabla_w)
+                w - learning_rate*nw
+                for w, nw in zip(layer.weights, average_layer_nabla_w)
             ])
             layer.biases = np.array([
-                b - (learning_rate/len(batch))*nb
-                for b, nb in zip(layer.biases, sum_layer_nabla_b)
+                b - learning_rate*nb
+                for b, nb in zip(layer.biases, average_layer_nabla_b)
             ])
 
     @staticmethod
@@ -69,18 +72,18 @@ class Trainer(object):
         batch_delta = self.cost.delta(batch_activations[-1], yz)
         nabla_b[-1] = batch_delta
         nabla_w[-1] = [
-            np.dot(delta, activations.T)
-            for delta, activations
-            in zip(batch_delta, batch_activations[-1])
+            np.dot(activations, delta)
+            for activations, delta
+            in zip(batch_activations[-1], batch_delta)
         ]
 
         for idx, layer in reversed(list(enumerate(network.layers))):
             batch_delta = layer.feed_backward(batch_delta)
             nabla_b[idx-2] = batch_delta
             nabla_w[idx-2] = [
-                np.dot(delta, activations.T)
-                for delta, activations
-                in zip(batch_delta, batch_activations[idx-2])
+                np.dot(activations, delta)
+                for activations, delta
+                in zip(batch_activations[idx-2], batch_delta)
             ]
 
         return nabla_b, nabla_w

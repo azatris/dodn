@@ -28,10 +28,10 @@ class Linear(Layer):
         super(Layer, self).__init__()
 
     def feed_forward(self, inputs):
-        return np.rollaxis(np.dot(self.weights, inputs), 1) + self.biases
+        return np.dot(self.weights, inputs) + self.biases
 
     def feed_backward(self, gradients):
-        return np.rollaxis(np.dot(self.weights.T, gradients), 1)
+        return np.dot(self.weights.T, gradients)
 
 
 class Sigmoid(Linear):
@@ -42,7 +42,7 @@ class Sigmoid(Linear):
 
     def feed_forward(self, inputs):
         linear_activations = super(Sigmoid, self).feed_forward(inputs)
-        return 1.0 / (1.0 + np.exp(-linear_activations))  # check this
+        return 1.0 / (1.0 + np.exp(-linear_activations))
 
     def feed_backward(self, gradients):
         sigmoid_primes = gradients*(1.0 - gradients)
