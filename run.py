@@ -4,15 +4,15 @@ import trainer
 import network
 import mnist_loader
 
-tr_d, va_d, te_d = mnist_loader.load_data_revamped()
+tr_d, va_d, te_d = mnist_loader.load_data_revamped_numpy()
 t = trainer.Trainer()
-net = network.Network([784, 30, 10], 0.1)
+net = network.Network([784, 200, 10], 0.1)
 t.sgd(
     net,
     tr_d[:1000],
     400,
     10,
-    0.5,
+    0.1,
     evaluation_data=te_d,
     monitor_training_cost=True
 )
