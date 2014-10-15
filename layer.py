@@ -2,6 +2,7 @@ __author__ = 'Azatris'
 
 from abc import ABCMeta, abstractmethod
 import numpy as np
+import logging
 
 
 class Layer(object):
@@ -50,7 +51,8 @@ class Sigmoid(Linear):
         eh_prev = super(Sigmoid, self).feed_backward(deltas, h)
         return deltas, eh_prev 
 
- 
+
+# TODO: How does this work?
 class Softmax(Linear):
     def __init__(self, neurons, inputs_per_neuron, weight_magnitude):
         super(Softmax, self).__init__(

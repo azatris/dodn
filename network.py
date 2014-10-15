@@ -2,27 +2,33 @@ __author__ = 'Azatris'
 
 import layer
 import numpy as np
+import logging
+
+log = logging.root
+
 
 class Network(object):
     def __init__(self, architecture, initial_weight_magnitude):
-        self.layers = [
-            layer.Sigmoid(neurons, inputs_per_neuron, initial_weight_magnitude)
-            for neurons, inputs_per_neuron
-            in zip(architecture[1:], architecture[:-2])
-        ]
-
-        self.layers.append(
+        self.layers = np.append(
+            [
+                layer.Sigmoid(
+                    neurons, inputs_per_neuron, initial_weight_magnitude
+                )
+                for neurons, inputs_per_neuron
+                in zip(architecture[1:], architecture[:-2])
+            ],
             layer.Softmax(
                 architecture[-1], architecture[-2], initial_weight_magnitude
             )
         )
 
-        ### INFO ###
         for L in xrange(0, len(self.layers)):
-            print "Created weight matrix in layer {} with shape {}".format(
+            log.info(
+                "Created weight matrix in layer %d: %s",
                 L, self.layers[L].weights.shape
             )
-            print "Created biases vector in layer {} with shape {}".format(
+            log.info(
+                "Created biases vector in layer %d: %s",
                 L, self.layers[L].biases.shape
             )
 

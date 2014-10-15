@@ -30,9 +30,8 @@ class CrossEntropyCost:
 
     @staticmethod
     def fn(a, y):
-        #this one only make sense for binominal distribution, not multinominal as with digits
-        #return np.nan_to_num(np.sum(-y*np.log(a) - (1 - y)*np.log(1 - a)))
-        return np.mean(np.max(np.nan_to_num(-y*np.log(a)),axis=1))
+        # FIXME: First time: invalid value encountered in log
+        return np.nan_to_num(np.sum(-y*np.log(a) - (1 - y)*np.log(1 - a)))
 
     @staticmethod
     def delta(a, y):
