@@ -15,6 +15,15 @@ class Utils(object):
         return vectorized_digit
 
 
+    @staticmethod
+    def shuffle_in_unison(feats, labels):
+        rng_state = np.random.get_state()
+        np.random.shuffle(feats)
+        np.random.set_state(rng_state)
+        np.random.shuffle(labels)
+        return feats, labels
+
+
 class CrossEntropyCost:
     def __init__(self):
         pass
