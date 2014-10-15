@@ -4,7 +4,7 @@ import trainer
 import network
 import mnist_loader
 
-tr_d, va_d, te_d = mnist_loader.load_data_revamped_numpy()
+tr_d, va_d, te_d = mnist_loader.load_data_revamped()
 t = trainer.Trainer()
 net = network.Network([784, 200, 10], 0.1)
 t.sgd(
