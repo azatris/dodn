@@ -14,6 +14,16 @@ class Utils(object):
         vectorized_digit[i] = 1.0
         return vectorized_digit
 
+    @staticmethod
+    def vectorize_digits(digits):
+        """ Return a len(digits)x10-dimensional one-hot vector with a 1.0 in
+        the ith position and zeroes elsewhere.  This is used to convert a digit
+        into a corresponding desired output from the neural network."""
+
+        vectorized_digits = np.zeros((len(digits), 10))
+        for idx, digit in enumerate(digits):
+            vectorized_digits[idx][digits] = 1.0
+        return vectorized_digits
 
     @staticmethod
     def shuffle_in_unison(feats, labels):

@@ -24,7 +24,6 @@ class Trainer(object):
             monitor_training_accuracy=False,
             log_interval=500):
 
-        # TODO: fix the evaluator so it can fit whatever I did with training
         evaluator = Evaluator(
             self.cost, training_data, evaluation_data,
             monitor_training_cost, monitor_training_accuracy,
@@ -35,7 +34,7 @@ class Trainer(object):
         log.info("Starting SGD training with...")
         log.info("Feats \t%s", feats.shape)
         log.info("Labels \t%s", labels.shape)
-        log.info("================================")
+
         for epoch in xrange(epochs):
             log.info("Epoch \t%d", epoch)
 
@@ -59,14 +58,7 @@ class Trainer(object):
                     )
                 count += 1
 
-            # fix evaluator, you do not want to do second pass of fprop through
-            # dataset (that's expensive!) to get the cost. For training
-            # purposes accumulating while training is more than enough, the
-            # same with accuracy on train set really it is just for statistics
-            # how the training progresses, you do not care about very precise
-            # number here, save time!
-            # evaluator.monitor(epoch, network)
-            log.info("================================")
+            evaluator.monitor(network)
 
     def update(self, network, xs, ys, learning_rate):
         # generate predictions given current params

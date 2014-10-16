@@ -19,10 +19,13 @@ t = trainer.Trainer()
 net = network.Network([784, 200, 10], 0.1)
 t.sgd(
     net,
-    tr_d[:1000],
+    tr_d,
     400,
     10,
     0.1,
-    evaluation_data=te_d,
-    monitor_training_cost=True
+    evaluation_data=va_d,
+    monitor_evaluation_cost=True,
+    monitor_evaluation_accuracy=True,
+    monitor_training_cost=True,
+    monitor_training_accuracy=True,
 )

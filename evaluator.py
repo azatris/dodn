@@ -3,6 +3,9 @@ from utils import Utils
 __author__ = 'Azatris'
 
 import numpy as np
+import logging
+
+log = logging.root
 
 
 class Evaluator(object):
@@ -18,29 +21,30 @@ class Evaluator(object):
         self.monitor_evaluation_cost = monitor_evaluation_cost
         self.monitor_evaluation_accuracy = monitor_evaluation_accuracy
 
-    def monitor(self, epoch, network):
-
-        print "Epoch %s training complete" % epoch
+    def monitor(self, network):
+        log.info("Training complete")
 
         if self.monitor_training_cost:
             cost = self.total_cost(
                 self.cost_function, self.training_data, network
             )
-            print "Cost on training data: {}".format(cost)
+            log.info("Training cost: \t%f", cost)
         if self.monitor_training_accuracy:
             accuracy = self.accuracy(self.training_data, network, convert=True)
-            print "Accuracy on training data: {} / {}".format(
-                accuracy, len(self.training_data)
+            log.info(
+                "Training accuracy: \t%d / %d",
+                accuracy, len(self.training_data[0])
             )
         if self.monitor_evaluation_cost:
             cost = self.total_cost(
                 self.cost_function, self.evaluation_data, network, convert=True
             )
-            print "Cost on evaluation data: {}".format(cost)
+            log.info("Evaluation cost: \t%f", cost)
         if self.monitor_evaluation_accuracy:
             accuracy = self.accuracy(self.evaluation_data, network)
-            print "Accuracy on evaluation data: {} / {}".format(
-                accuracy, len(self.evaluation_data)
+            log.info(
+                "Evaluation accuracy: \t%d / %d",
+                accuracy, len(self.evaluation_data[0])
             )
 
         print
@@ -48,23 +52,29 @@ class Evaluator(object):
     @staticmethod
     def total_cost(cost_type, data, network, convert=False):
         cost = 0.0
-        for x, y in data:
-            a = network.feed_forward(x)
+        feats, labels = data
+        feats_split = np.split(feats, len(feats)/10)
+        labels_split = np.split(labels, len(labels)/10)
+        for mini_feats, mini_labels in zip(feats_split, labels_split):
+            a = network.feed_forward(mini_feats)
             if convert:
-                y = Utils.vectorize_digit(y)
-            cost += cost_type.fn(a, y)/len(data)
+                mini_labels = Utils.vectorize_digits(mini_labels)
+            cost += np.sum(cost_type.fn(a, mini_labels), axis=0)/len(data)
         return cost
 
     @staticmethod
     def accuracy(data, network, convert=False):
+        feats, labels = data
         if convert:
-            results = [
-                (np.argmax(network.feed_forward(x)), np.argmax(y))
-                for (x, y) in data
-            ]
-        else:
-            results = [
-                (np.argmax(network.feed_forward(x)), y)
-                for (x, y) in data
-            ]
-        return sum(int(x == y) for (x, y) in results)
+            labels = np.argmax(labels, axis=1)
+        feats_split = np.split(feats, len(feats)/10)
+        labels_split = np.split(labels, len(labels)/10)
+        accurate_results = 0
+        for mini_feats, mini_labels in zip(feats_split, labels_split):
+            mini_label_estimates = np.argmax(
+                network.feed_forward(mini_feats), axis=1
+            )
+            accurate_results += np.sum(
+                np.equal(mini_label_estimates, mini_labels)
+            )
+        return accurate_results

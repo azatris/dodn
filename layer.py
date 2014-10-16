@@ -62,7 +62,7 @@ class Softmax(Linear):
     def feed_forward(self, inputs):
         linear_activations = super(Softmax, self).feed_forward(inputs)
         ostate = np.exp(linear_activations)
-        return ostate/(np.sum(ostate, axis=1)+1e-8)
+        return (ostate.T/np.sum(ostate, axis=1)).T + 1e-8
 
     def feed_backward(self, eh, h):
         # here we assume the gradient w.r.t cost function was already computed

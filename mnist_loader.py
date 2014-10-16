@@ -51,9 +51,9 @@ def load_data_revamped():
     training_data = (training_inputs, training_results)
 
     validation_inputs = np.asarray([np.reshape(x, 784) for x in raw_va_data[0]])
-    validation_data = (validation_inputs, raw_va_data[1])
+    validation_data = (validation_inputs,  raw_va_data[1])
 
-    test_inputs = np.asarray([np.reshape(x, 784) for x in raw_va_data[0]])
+    test_inputs = np.asarray([np.reshape(x, 784) for x in raw_te_data[0]])
     test_data = (test_inputs, raw_te_data[1])
 
     return training_data, validation_data, test_data
