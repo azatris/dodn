@@ -49,5 +49,4 @@ class Network(object):
             deltas[L], error = self.layers[L].feed_backward(
                 error, activations[L+1]
             )
-        assert(deltas[-1] == error)
         return deltas
