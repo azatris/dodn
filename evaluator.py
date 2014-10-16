@@ -51,24 +51,26 @@ class Evaluator(object):
 
     @staticmethod
     def total_cost(cost_type, data, network, convert=False):
+        chunk_size = 10
         cost = 0.0
         feats, labels = data
-        feats_split = np.split(feats, len(feats)/10)
-        labels_split = np.split(labels, len(labels)/10)
+        feats_split = np.split(feats, len(feats)/chunk_size)
+        labels_split = np.split(labels, len(labels)/chunk_size)
         for mini_feats, mini_labels in zip(feats_split, labels_split):
             a = network.feed_forward(mini_feats)
             if convert:
                 mini_labels = Utils.vectorize_digits(mini_labels)
-            cost += np.sum(cost_type.fn(a, mini_labels), axis=0)/len(data)
-        return cost
+            cost += np.sum(cost_type.fn(a, mini_labels), axis=0)
+        return cost/len(feats)
 
     @staticmethod
     def accuracy(data, network, convert=False):
+        chunk_size = 10
         feats, labels = data
         if convert:
             labels = np.argmax(labels, axis=1)
-        feats_split = np.split(feats, len(feats)/10)
-        labels_split = np.split(labels, len(labels)/10)
+        feats_split = np.split(feats, len(feats)/chunk_size)
+        labels_split = np.split(labels, len(labels)/chunk_size)
         accurate_results = 0
         for mini_feats, mini_labels in zip(feats_split, labels_split):
             mini_label_estimates = np.argmax(

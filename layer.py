@@ -1,8 +1,9 @@
+from utils import Utils
+
 __author__ = 'Azatris'
 
 from abc import ABCMeta, abstractmethod
 import numpy as np
-import logging
 
 
 class Layer(object):
@@ -16,7 +17,7 @@ class Layer(object):
         pass
 
     @abstractmethod
-    def feed_backward(self, gradients, h):
+    def feed_backward(self, delta, activation):
         pass
 
 
@@ -32,8 +33,8 @@ class Linear(Layer):
     def feed_forward(self, inputs):
         return np.dot(inputs, self.weights) + self.biases
 
-    def feed_backward(self, eh, h):
-        return np.dot(eh, self.weights.transpose())
+    def feed_backward(self, error, activation):
+        return np.dot(error, self.weights.transpose())
 
 
 class Sigmoid(Linear):
@@ -46,28 +47,26 @@ class Sigmoid(Linear):
         linear_activations = super(Sigmoid, self).feed_forward(inputs)
         return 1.0 / (1.0 + np.exp(-linear_activations))
 
-    def feed_backward(self, eh, h):
-        deltas = eh*h*(1.0 - h)
-        eh_prev = super(Sigmoid, self).feed_backward(deltas, h)
-        return deltas, eh_prev 
+    def feed_backward(self, error, activation):
+        error *= activation*(1.0 - activation)
+        eh_prev = super(Sigmoid, self).feed_backward(error, activation)
+        return error, eh_prev
 
 
-# TODO: How does this work?
 class Softmax(Linear):
     def __init__(self, neurons, inputs_per_neuron, weight_magnitude):
         super(Softmax, self).__init__(
             neurons, inputs_per_neuron, weight_magnitude
         )
-    
-    def feed_forward(self, inputs):
-        linear_activations = super(Softmax, self).feed_forward(inputs)
-        ostate = np.exp(linear_activations)
-        return (ostate.T/np.sum(ostate, axis=1)).T + 1e-8
 
-    def feed_backward(self, eh, h):
+    def feed_forward(self, inputs):
+        linear_activation = super(Softmax, self).feed_forward(inputs)
+        return Utils.softmax(linear_activation)
+
+    def feed_backward(self, error, activation):
         # here we assume the gradient w.r.t cost function was already computed
         # and passed here and that the cost is cross entropy with 1-of-K coding
         # which kicks-off off-diagonal elements of cross-dependency of targets
-        # (i.e. off-diagonal elements of the Jacobian) i.e. deltas=eh
-        eh_prev = super(Softmax, self).feed_backward(eh, h)
-        return eh, eh_prev
+        # (i.e. off-diagonal elements of the Jacobian)
+        previous_error = super(Softmax, self).feed_backward(error, activation)
+        return error, previous_error

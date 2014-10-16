@@ -41,21 +41,13 @@ class Network(object):
             return activations
         return activations[-1]
 
-    # TODO: What is going on here?
-    def feed_backward(self, error, activations):
+    def feed_backward(self, output_error, activations):
         assert len(activations) == (len(self.layers) + 1)
         deltas = np.empty(len(self.layers), dtype=object)
-
-        # some notation identities, z=Wx+b, h=f(z), hence dh/dz depends on
-        # non-linearity and z is just linear transform
-        # to update params you need dh/dz (deltas) and prev layer activations
-        # h(l-1) but you need also pass the signal through linear part,
-        # referred as eh below
-
-        # deltas[-1] = error #note, here we make a shortcut, that the error
-        # w.r.t cross-entropy and 1ofK targets is actually a correct gradient
-        eh = error  # this one is supposed to keep dh/dz*W.T,
-                    # above deltas are only dh/dz
+        error = output_error
         for L in xrange(len(self.layers) - 1, -1, -1):
-            deltas[L], eh = self.layers[L].feed_backward(eh, activations[L+1])
+            deltas[L], error = self.layers[L].feed_backward(
+                error, activations[L+1]
+            )
+        assert(deltas[-1] == error)
         return deltas

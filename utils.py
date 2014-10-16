@@ -33,6 +33,11 @@ class Utils(object):
         np.random.shuffle(labels)
         return feats, labels
 
+    @staticmethod
+    def softmax(v):
+        exp_v = np.exp(v)
+        return (exp_v.T / np.sum(exp_v, axis=1)).T + 1e-8
+
 
 class CrossEntropyCost:
     def __init__(self):

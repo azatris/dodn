@@ -23,7 +23,7 @@ t.sgd(
     400,
     10,
     0.1,
-    evaluation_data=va_d,
+    evaluation_data=te_d,
     monitor_evaluation_cost=True,
     monitor_evaluation_accuracy=True,
     monitor_training_cost=True,
