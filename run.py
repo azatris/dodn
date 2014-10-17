@@ -7,6 +7,9 @@ import mnist_loader
 import logging
 import sys
 
+""" Sandbox. """
+
+# The logging initialization should be more general and taken out of run.py.
 log = logging.root
 log.setLevel(logging.DEBUG)
 formatter = logging.Formatter("[%(levelname)s] %(message)s")

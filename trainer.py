@@ -11,8 +11,12 @@ log = logging.root
 
 
 class Trainer(object):
+    """ Trains the class i.e. changes the weight and biases of
+    a given network using training data and a particular cost
+    function which to compute the errors with. """
+
     def __init__(self, cost=CrossEntropyCost):
-        np.random.seed(42)
+        np.random.seed(42)  # for consistent results
         self.cost = cost
 
     def sgd(self, network, training_data, epochs,
@@ -23,7 +27,10 @@ class Trainer(object):
             monitor_training_cost=False,
             monitor_training_accuracy=False,
             log_interval=1000):
+        """ Does stochastic gradient descent training on a given
+        network and training data for a number of epochs (times). """
 
+        # Prints statistical data on request between epochs.
         evaluator = Evaluator(
             self.cost, training_data, evaluation_data,
             monitor_training_cost, monitor_training_accuracy,
@@ -61,28 +68,31 @@ class Trainer(object):
             evaluator.monitor(network)
 
     def update(self, network, xs, ys, learning_rate):
-        # generate predictions given current params
+        """ The core of sgd given features xs and their respective
+        labels ys. """
+
+        # Generate predictions given current params.
         activations = network.feed_forward(xs, return_all=True)
 
-        # here we compute the top level error and cost for minibatch
+        # Compute the top level error and cost for minibatch.
         cost_gradient = self.cost.delta(activations[-1], ys)
         scalar_cost = self.cost.fn(activations[-1], ys)
 
-        # backpropagate the errors, compute deltas
+        # Backpropagate the errors, compute deltas.
         deltas = network.feed_backward(cost_gradient, activations)
         
-        # now, given both passes, compute actual gradients w.r.t params
+        # Given both passes, compute actual gradients w.r.t params.
         nabla_b = np.empty(len(network.layers), dtype=object)
         nabla_w = np.empty(len(network.layers), dtype=object)
-        
+
+        # Compute the sum over minibatch, and compensate in
+        # learning rate scaling it down by mini-batch size.
         for idx in xrange(0, len(network.layers)):
-            # we compute the sum over minibatch, and
-            # compensate in learning rate scaling it down by mini-batch size
             nabla_b[idx] = np.sum(deltas[idx], axis=0)
             nabla_w[idx] = np.dot(deltas[idx].T, activations[idx]).T
-            
         learning_rate_scaled = learning_rate/len(xs)
-        
+
+        # Update weights and biases.
         for idx, layer in enumerate(network.layers):
             layer.weights -= learning_rate_scaled * nabla_w[idx]
             layer.biases -= learning_rate_scaled * nabla_b[idx]

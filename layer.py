@@ -7,23 +7,33 @@ import numpy as np
 
 
 class Layer(object):
+    """ Abstract Layer. Layer has weights and biases. """
     __metaclass__ = ABCMeta
 
     def __init__(self):
+        """ Initializes the layer with neurons in the form of
+        providing weights that connect to it and biases. """
         pass
 
     @abstractmethod
     def feed_forward(self, inputs):
+        """ Computes the output of a layer when given the inputs
+        from the previous layer. """
         pass
 
     @abstractmethod
-    def feed_backward(self, delta, activation):
+    def feed_backward(self, error, activation):
+        """ Computes the delta of this layer (and possibly the
+        error of the previous layer) given the error of this
+        layer. """
         pass
 
 
 class Linear(Layer):
+    """ Linear Layer i.e. no neuron activation function. """
+
     def __init__(self, neurons, inputs_per_neuron, weight_magnitude):
-        np.random.seed(42)
+        np.random.seed(42)  # for consistent results
         self.weights = np.random.uniform(
             -weight_magnitude, weight_magnitude, (inputs_per_neuron, neurons)
         )
@@ -38,6 +48,9 @@ class Linear(Layer):
 
 
 class Sigmoid(Linear):
+    """ Sigmoid Layer. Extends the Linear Layer by providing
+    a sigmoidal activation function for each of the neurons. """
+
     def __init__(self, neurons, inputs_per_neuron, weight_magnitude):
         super(Sigmoid, self).__init__(
             neurons, inputs_per_neuron, weight_magnitude
@@ -48,12 +61,16 @@ class Sigmoid(Linear):
         return 1.0 / (1.0 + np.exp(-linear_activations))
 
     def feed_backward(self, error, activation):
-        error *= activation*(1.0 - activation)
-        eh_prev = super(Sigmoid, self).feed_backward(error, activation)
-        return error, eh_prev
+        delta = error*activation*(1.0 - activation)
+        previous_error = super(Sigmoid, self).feed_backward(error, activation)
+        return delta, previous_error
 
 
 class Softmax(Linear):
+    """ Softmax Layer. Extends the Linear Layer by providing
+    a Softmax activation function for each of the neurons.
+    Normally used as the last layer of a network. """
+
     def __init__(self, neurons, inputs_per_neuron, weight_magnitude):
         super(Softmax, self).__init__(
             neurons, inputs_per_neuron, weight_magnitude
@@ -64,9 +81,11 @@ class Softmax(Linear):
         return Utils.softmax(linear_activation)
 
     def feed_backward(self, error, activation):
-        # here we assume the gradient w.r.t cost function was already computed
-        # and passed here and that the cost is cross entropy with 1-of-K coding
-        # which kicks-off off-diagonal elements of cross-dependency of targets
-        # (i.e. off-diagonal elements of the Jacobian)
+        """ Assumes the gradient w.r.t cost function was already
+        computed and passed here and that the cost is cross-entropy
+        with 1-of-K coding which kicks-off off-diagonal elements of
+        cross-dependency of targets (i.e. off-diagonal elements of
+        the Jacobian). """
+
         previous_error = super(Softmax, self).feed_backward(error, activation)
         return error, previous_error
