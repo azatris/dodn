@@ -9,6 +9,9 @@ log = logging.root
 
 
 class Evaluator(object):
+    """ Evaluates and logs the cost and accuracy of a given network.
+    """
+
     def __init__(self, cost_function, training_data, evaluation_data,
                  monitor_training_cost, monitor_training_accuracy,
                  monitor_evaluation_cost, monitor_evaluation_accuracy):
@@ -22,6 +25,9 @@ class Evaluator(object):
         self.monitor_evaluation_accuracy = monitor_evaluation_accuracy
 
     def monitor(self, network):
+        """ According to evaluator settings, evaluates and logs the
+        cost and accuracy of a given network. """
+
         log.info("Training complete")
 
         if self.monitor_training_cost:
@@ -51,6 +57,9 @@ class Evaluator(object):
 
     @staticmethod
     def total_cost(cost_type, data, network, convert=False):
+        """ Calculates the cost of given data against the network.
+        :param convert labels digit -> one-hot """
+
         chunk_size = 4096
         cost = 0.0
         feats, labels = data
@@ -65,6 +74,9 @@ class Evaluator(object):
 
     @staticmethod
     def accuracy(data, network, convert=False):
+        """ Calculates the accuracy of given data against the network.
+        :param convert labels one-hot -> digit """
+
         chunk_size = 4096
         feats, labels = data
         if convert:
