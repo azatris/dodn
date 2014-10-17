@@ -51,7 +51,7 @@ class Evaluator(object):
 
     @staticmethod
     def total_cost(cost_type, data, network, convert=False):
-        chunk_size = 10
+        chunk_size = 4096
         cost = 0.0
         feats, labels = data
         feats_split = np.split(feats, len(feats)/chunk_size)
@@ -65,7 +65,7 @@ class Evaluator(object):
 
     @staticmethod
     def accuracy(data, network, convert=False):
-        chunk_size = 10
+        chunk_size = 4096
         feats, labels = data
         if convert:
             labels = np.argmax(labels, axis=1)

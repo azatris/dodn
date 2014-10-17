@@ -22,7 +22,7 @@ class Trainer(object):
             monitor_evaluation_accuracy=False,
             monitor_training_cost=False,
             monitor_training_accuracy=False,
-            log_interval=500):
+            log_interval=1000):
 
         evaluator = Evaluator(
             self.cost, training_data, evaluation_data,
