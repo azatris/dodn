@@ -16,16 +16,16 @@ log.addHandler(handler_stream)
 
 tr_d, va_d, te_d = mnist_loader.load_data_revamped()
 t = trainer.Trainer()
-net = network.Network([784, 200, 10], 0.1)
+net = network.Network([784, 800, 10], 0.1)
 t.sgd(
     net,
     tr_d,
-    400,
+    30,
     10,
     0.1,
     evaluation_data=te_d,
-    monitor_evaluation_cost=True,
+    monitor_evaluation_cost=False,
     monitor_evaluation_accuracy=True,
-    monitor_training_cost=True,
-    monitor_training_accuracy=True,
+    monitor_training_cost=False,
+    monitor_training_accuracy=False,
 )
