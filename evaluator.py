@@ -29,6 +29,7 @@ class Evaluator(object):
         cost and accuracy of a given network. """
 
         log.info("Training complete")
+        accuracy = None
 
         if self.monitor_training_cost:
             cost = self.total_cost(
@@ -54,6 +55,8 @@ class Evaluator(object):
             )
 
         print
+
+        return accuracy
 
     @staticmethod
     def total_cost(cost_type, data, network, convert=False):

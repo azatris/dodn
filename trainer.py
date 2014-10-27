@@ -26,6 +26,7 @@ class Trainer(object):
             monitor_evaluation_accuracy=False,
             monitor_training_cost=False,
             monitor_training_accuracy=False,
+            stopper=None,
             log_interval=1000):
         """ Does stochastic gradient descent training on a given
         network and training data for a number of epochs (times). """
@@ -65,7 +66,15 @@ class Trainer(object):
                     )
                 count += 1
 
-            evaluator.monitor(network)
+            accuracy = evaluator.monitor(network)
+            if stopper and accuracy:
+                if stopper.threshold_reached(accuracy, network):
+                    network = stopper.highest_accuracy_network
+                    log.info(
+                        "Early stop performed. Highest accuracy: %d",
+                        stopper.highest_accuracy
+                    )
+                    break
 
     def update(self, network, xs, ys, learning_rate):
         """ The core of sgd given features xs and their respective
@@ -98,3 +107,27 @@ class Trainer(object):
             layer.biases -= learning_rate_scaled * nabla_b[idx]
         
         return scalar_cost
+
+
+class Stopper(object):
+    """ Stops the training when no improvement in a defined number of
+        epochs has been seen. Depends on evaluator. """
+
+    def __init__(self, threshold):
+        self.threshold = threshold
+        self.no_improvements = 0
+        self.highest_accuracy = 0
+        self.highest_accuracy_network = None;
+
+    def threshold_reached(self, accuracy, network):
+        """ Updates the information for the stopper and makes
+        a decision whether training should be stopped yet. """
+
+        if accuracy > self.highest_accuracy:
+            self.highest_accuracy = accuracy
+            self.highest_accuracy_network = network
+            self.no_improvements = 0
+        else:
+            self.no_improvements += 1
+
+        return self.no_improvements >= self.threshold

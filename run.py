@@ -19,7 +19,8 @@ log.addHandler(handler_stream)
 
 tr_d, va_d, te_d = mnist_loader.load_data_revamped()
 t = trainer.Trainer()
-net = network.Network([784, 800, 10], 0.1)
+stopper = trainer.Stopper(4)
+net = network.Network([784, 400, 400, 10], 0.1)
 t.sgd(
     net,
     tr_d,
@@ -31,4 +32,5 @@ t.sgd(
     monitor_evaluation_accuracy=True,
     monitor_training_cost=False,
     monitor_training_accuracy=False,
+    stopper=stopper
 )
