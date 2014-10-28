@@ -1,3 +1,6 @@
+import time
+from network import Io
+
 __author__ = 'Azatris'
 
 import trainer
@@ -34,3 +37,4 @@ t.sgd(
     monitor_training_accuracy=False,
     stopper=stopper
 )
+Io.save(net, "networks\\" + time.strftime("%Y%m%d-%H%M%S") + ".json")

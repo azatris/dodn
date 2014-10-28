@@ -32,12 +32,21 @@ class Layer(object):
 class Linear(Layer):
     """ Linear Layer i.e. no neuron activation function. """
 
-    def __init__(self, neurons, inputs_per_neuron, weight_magnitude):
-        np.random.seed(42)  # for consistent results
-        self.weights = np.random.uniform(
-            -weight_magnitude, weight_magnitude, (inputs_per_neuron, neurons)
-        )
-        self.biases = np.zeros(neurons)
+    def __init__(
+            self, neurons=None, inputs_per_neuron=None, weight_magnitude=0.1,
+            weights=None, biases=None
+    ):
+        if weights is not None and biases is not None:
+            self.weights = weights
+            self.biases = biases
+        else:
+            np.random.seed(42)  # for consistent results
+            self.weights = np.random.uniform(
+                -weight_magnitude, weight_magnitude,
+                (inputs_per_neuron, neurons)
+            )
+            self.biases = np.zeros(neurons)
+
         super(Layer, self).__init__()
 
     def feed_forward(self, inputs):
@@ -51,9 +60,12 @@ class Sigmoid(Linear):
     """ Sigmoid Layer. Extends the Linear Layer by providing
     a sigmoidal activation function for each of the neurons. """
 
-    def __init__(self, neurons, inputs_per_neuron, weight_magnitude):
+    def __init__(
+            self, neurons=None, inputs_per_neuron=None, weight_magnitude=0.1,
+            weights=None, biases=None
+    ):
         super(Sigmoid, self).__init__(
-            neurons, inputs_per_neuron, weight_magnitude
+            neurons, inputs_per_neuron, weight_magnitude, weights, biases
         )
 
     def feed_forward(self, inputs):
@@ -71,9 +83,12 @@ class Softmax(Linear):
     a Softmax activation function for each of the neurons.
     Normally used as the last layer of a network. """
 
-    def __init__(self, neurons, inputs_per_neuron, weight_magnitude):
+    def __init__(
+            self, neurons=None, inputs_per_neuron=None, weight_magnitude=0.1,
+            weights=None, biases=None
+    ):
         super(Softmax, self).__init__(
-            neurons, inputs_per_neuron, weight_magnitude
+            neurons, inputs_per_neuron, weight_magnitude, weights, biases
         )
 
     def feed_forward(self, inputs):
