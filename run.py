@@ -23,7 +23,7 @@ log.addHandler(handler_stream)
 tr_d, va_d, te_d = mnist_loader.load_data_revamped()
 t = trainer.Trainer()
 stopper = trainer.Stopper(4)
-architecture = [784, 400, 400, 10]
+architecture = [784, 800, 10]
 net = network.Network(architecture, 0.1)
 t.sgd(
     net,
@@ -40,5 +40,5 @@ t.sgd(
 )
 Io.save(
     net,
-    "networks\\" + time.strftime("%Y%m%d-%H%M%S") + architecture + ".json"
+    "networks\\" + time.strftime("%Y%m%d-%H%M%S") + str(architecture) + ".json"
 )
