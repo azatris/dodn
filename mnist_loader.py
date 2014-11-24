@@ -47,7 +47,9 @@ def load_data_revamped():
     raw_tr_data, raw_va_data, raw_te_data = load_data()
 
     training_inputs = np.asarray([np.reshape(x, 784) for x in raw_tr_data[0]])
-    training_results = np.asarray([Utils.vectorize_digit(y) for y in raw_tr_data[1]])
+    training_results = np.asarray(
+        [Utils.vectorize_digit(y) for y in raw_tr_data[1]]
+    )
     training_data = (training_inputs, training_results)
 
     validation_inputs = np.asarray([np.reshape(x, 784) for x in raw_va_data[0]])

@@ -39,15 +39,15 @@ class ListScheduler(Scheduler):
             self.learning_rates = learning_rates
         self.max_epochs = max_epochs
         self.epoch = 0
-        self.learning_rate = learning_rates[0]
+        self.learning_rate = self.learning_rates[0]
 
         super(Scheduler, self).__init__()
 
-    def compute_next_learning_rate(self):
+    def compute_next_learning_rate(self, accuracy=None, network=None):
         if self.epoch >= self.max_epochs:
             self.learning_rate = 0
         else:
-            if len(self.learning_rates) >= self.epoch:
+            if len(self.learning_rates) <= self.epoch:
                 self.learning_rate = self.learning_rates[-1]
             else:
                 self.learning_rate = self.learning_rates[self.epoch]
@@ -59,7 +59,8 @@ class ListScheduler(Scheduler):
 
 class DecayScheduler(Scheduler):
     """ Decays/lessens the training when no improvement in a defined threshold
-    of epochs has been seen or stops training completely. Depends on evaluator.
+    of epochs has been seen or stops training completely. Depends on evaluator,
+    the programmer is trusted to pass the necessary data.
     """
 
     def __init__(

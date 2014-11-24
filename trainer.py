@@ -6,6 +6,7 @@ __author__ = 'Azatris'
 
 import numpy as np
 import logging
+from scheduler import ListScheduler
 
 log = logging.root
 
@@ -19,20 +20,22 @@ class Trainer(object):
         np.random.seed(42)  # for consistent results
         self.cost = cost
 
-    def sgd(self, network, training_data, epochs,
-            minibatch_size, learning_rate,
-            evaluator=None,
-            scheduler=None):
+    def sgd(self, network, training_data, minibatch_size,
+            evaluator=None, scheduler=None):
         """ Does stochastic gradient descent training on a given
         network and training data for a number of epochs (times). """
+
+        if scheduler is None:
+            scheduler = ListScheduler()
 
         feats, labels = training_data
         log.info("Starting SGD training with...")
         log.info("Feats \t%s", feats.shape)
         log.info("Labels \t%s", labels.shape)
 
-        for epoch in xrange(epochs):
-            log.info("Epoch \t%d", epoch)
+        learning_rate = scheduler.get_learning_rate()
+        while learning_rate > 0:
+            log.info("Epoch \t%d", scheduler.epoch)
 
             # Prepare training data
             feats, labels = Utils.shuffle_in_unison(feats, labels)
@@ -55,13 +58,13 @@ class Trainer(object):
             if scheduler is not None:
                 scheduler.compute_next_learning_rate(accuracy, network)
                 learning_rate = scheduler.get_learning_rate()
-                if learning_rate is 0:
-                    network = scheduler.highest_accuracy_network
-                    log.info(
-                        "Learning stopped. Highest accuracy: %d",
-                        scheduler.highest_accuracy
-                    )
-                    break
+
+        if hasattr(scheduler, 'highest_accuracy_network'):
+            network = scheduler.highest_accuracy_network
+            log.info(
+                "Learning stopped. Highest accuracy: %d",
+                scheduler.highest_accuracy
+            )
 
     def update(self, network, xs, ys, learning_rate):
         """ The core of sgd given features xs and their respective

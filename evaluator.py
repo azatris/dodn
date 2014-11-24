@@ -92,16 +92,19 @@ class Evaluator(object):
         return cost/len(feats)
 
     @staticmethod
-    def accuracy(data, network, convert=False):
+    def accuracy(data, network, convert=False, chunk_size=5000):
         """ Calculates the accuracy of given data against the network.
         :param convert: labels one-hot -> digit """
 
-        chunk_size = 4096
         feats, labels = data
         if convert:
             labels = np.argmax(labels, axis=1)
-        feats_split = np.split(feats, len(feats)/chunk_size)
-        labels_split = np.split(labels, len(labels)/chunk_size)
+        if len(feats) > chunk_size and len(labels) > chunk_size:
+            feats_split = np.split(feats, len(feats)/chunk_size)
+            labels_split = np.split(labels, len(labels)/chunk_size)
+        else:
+            feats_split = [feats]
+            labels_split = [labels]
         accurate_results = 0
         for mini_feats, mini_labels in zip(feats_split, labels_split):
             mini_label_estimates = np.argmax(

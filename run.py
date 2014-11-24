@@ -1,10 +1,12 @@
+__author__ = 'Azatris'
+
 import time
 from evaluator import Evaluator
 from network import Io
+import numpy as np
 
-__author__ = 'Azatris'
 
-import trainer
+from trainer import Trainer
 import network
 import mnist_loader
 import scheduler
@@ -23,21 +25,23 @@ handler_stream.setFormatter(formatter)
 log.addHandler(handler_stream)
 
 tr_d, va_d, te_d = mnist_loader.load_data_revamped()
-t = trainer.Trainer()
-evaluator = Evaluator(
-    tr_d, te_d
-)
-scheduler = scheduler.DecayScheduler()
+
+# Subset the data
+data_size = 50000
+tr_d = (np.asarray(tr_d[0][:data_size]), np.asarray(tr_d[1][:data_size]))
+te_d = (np.asarray(te_d[0][:data_size]), np.asarray(te_d[1][:data_size]))
+
+trainer = Trainer()
+evaluator = Evaluator(tr_d, te_d, log_interval=data_size/50)
+#scheduler = scheduler.DecayScheduler()
 architecture = [784, 800, 10]
 net = network.Network(architecture, 0.1)
-t.sgd(
+trainer.sgd(
     net,
     tr_d,
-    30,
     10,
-    0.1,
     evaluator=evaluator,
-    scheduler=scheduler
+    scheduler=None
 )
 Io.save(
     net,
