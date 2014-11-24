@@ -6,6 +6,7 @@ __author__ = 'Azatris'
 import trainer
 import network
 import mnist_loader
+import scheduler
 
 import logging
 import sys
@@ -22,7 +23,7 @@ log.addHandler(handler_stream)
 
 tr_d, va_d, te_d = mnist_loader.load_data_revamped()
 t = trainer.Trainer()
-stopper = trainer.Stopper(4)
+scheduler = scheduler.DecayScheduler()
 architecture = [784, 800, 10]
 net = network.Network(architecture, 0.1)
 t.sgd(
@@ -36,7 +37,7 @@ t.sgd(
     monitor_evaluation_accuracy=True,
     monitor_training_cost=False,
     monitor_training_accuracy=False,
-    stopper=stopper
+    scheduler=scheduler
 )
 Io.save(
     net,
