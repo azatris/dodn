@@ -1,4 +1,4 @@
-from utils import Utils
+from utils import Utils, CrossEntropyCost
 
 __author__ = 'Azatris'
 
@@ -12,9 +12,13 @@ class Evaluator(object):
     """ Evaluates and logs the cost and accuracy of a given network.
     """
 
-    def __init__(self, cost_function, training_data, evaluation_data,
-                 monitor_training_cost, monitor_training_accuracy,
-                 monitor_evaluation_cost, monitor_evaluation_accuracy):
+    def __init__(self, training_data, evaluation_data,
+                 monitor_evaluation_cost=False,
+                 monitor_evaluation_accuracy=True,
+                 monitor_training_cost=False,
+                 monitor_training_accuracy=False,
+                 cost_function=CrossEntropyCost,
+                 log_interval=1000):
 
         self.cost_function = cost_function
         self.training_data = training_data
@@ -23,6 +27,8 @@ class Evaluator(object):
         self.monitor_training_accuracy = monitor_training_accuracy
         self.monitor_evaluation_cost = monitor_evaluation_cost
         self.monitor_evaluation_accuracy = monitor_evaluation_accuracy
+        self.log_interval = log_interval
+        self.minibatches_count = 1
 
     def monitor(self, network):
         """ According to evaluator settings, evaluates and logs the
@@ -57,6 +63,16 @@ class Evaluator(object):
         print
 
         return accuracy
+
+    def log_training_cost(self, training_cost):
+        if self.log_interval > 0 and \
+                self.minibatches_count % self.log_interval == 0:
+            log.info(
+                "Cost after %d minibatches is %f",
+                self.minibatches_count,
+                training_cost/self.minibatches_count
+            )
+        self.minibatches_count += 1
 
     @staticmethod
     def total_cost(cost_type, data, network, convert=False):

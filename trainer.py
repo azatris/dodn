@@ -20,24 +20,12 @@ class Trainer(object):
         self.cost = cost
 
     def sgd(self, network, training_data, epochs,
-            minibatch_size, eta,
-            evaluation_data=None,
-            monitor_evaluation_cost=False,
-            monitor_evaluation_accuracy=False,
-            monitor_training_cost=False,
-            monitor_training_accuracy=False,
-            scheduler=None,
-            log_interval=1000):
+            minibatch_size, learning_rate,
+            evaluator=None,
+            scheduler=None):
         """ Does stochastic gradient descent training on a given
         network and training data for a number of epochs (times). """
 
-        # Prints statistical data on request between epochs.
-        evaluator = Evaluator(
-            self.cost, training_data, evaluation_data,
-            monitor_training_cost, monitor_training_accuracy,
-            monitor_evaluation_cost, monitor_evaluation_accuracy
-        )
-        
         feats, labels = training_data
         log.info("Starting SGD training with...")
         log.info("Feats \t%s", feats.shape)
@@ -46,38 +34,36 @@ class Trainer(object):
         for epoch in xrange(epochs):
             log.info("Epoch \t%d", epoch)
 
+            # Prepare training data
             feats, labels = Utils.shuffle_in_unison(feats, labels)
             feats_split = np.split(feats, len(feats)/minibatch_size)
             labels_split = np.split(labels, len(labels)/minibatch_size)
 
+            # Descend the gradient
             training_cost = 0.0
-            count = 1
             for mini_feats, mini_labels in zip(feats_split, labels_split):
                 training_cost += self.update(
-                    network, mini_feats, mini_labels, eta
+                    network, mini_feats, mini_labels, learning_rate
                 )
+                if evaluator is not None:
+                    evaluator.log_training_cost(training_cost)
 
-                # TODO: This functionality should not be here
-                if count % log_interval == 0:
+            # Network evaluation and learning rate scheduling
+            accuracy = None
+            if evaluator is not None:
+                accuracy = evaluator.monitor(network)
+            if scheduler is not None:
+                scheduler.compute_next_learning_rate(accuracy, network)
+                learning_rate = scheduler.get_learning_rate()
+                if learning_rate is 0:
+                    network = scheduler.highest_accuracy_network
                     log.info(
-                        "Cost after %d minibatches is %f",
-                        count,
-                        training_cost/count
+                        "Learning stopped. Highest accuracy: %d",
+                        scheduler.highest_accuracy
                     )
-                count += 1
+                    break
 
-            accuracy = evaluator.monitor(network)
-            scheduler.compute_next_learning_rate(accuracy, network)
-            eta = scheduler.get_learning_rate()
-            if eta is 0:
-                network = scheduler.highest_accuracy_network
-                log.info(
-                    "Learning stopped. Highest accuracy: %d",
-                    scheduler.highest_accuracy
-                )
-                break
-
-    def update(self, network, xs, ys, eta):
+    def update(self, network, xs, ys, learning_rate):
         """ The core of sgd given features xs and their respective
         labels ys. """
 
@@ -100,11 +86,11 @@ class Trainer(object):
         for idx in xrange(0, len(network.layers)):
             nabla_b[idx] = np.sum(deltas[idx], axis=0)
             nabla_w[idx] = np.dot(deltas[idx].T, activations[idx]).T
-        eta_scaled = eta/len(xs)
+        learning_rate_scaled = learning_rate/len(xs)
 
         # Update weights and biases.
         for idx, layer in enumerate(network.layers):
-            layer.weights -= eta_scaled * nabla_w[idx]
-            layer.biases -= eta_scaled * nabla_b[idx]
+            layer.weights -= learning_rate_scaled * nabla_w[idx]
+            layer.biases -= learning_rate_scaled * nabla_b[idx]
         
         return scalar_cost

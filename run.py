@@ -1,4 +1,5 @@
 import time
+from evaluator import Evaluator
 from network import Io
 
 __author__ = 'Azatris'
@@ -23,6 +24,9 @@ log.addHandler(handler_stream)
 
 tr_d, va_d, te_d = mnist_loader.load_data_revamped()
 t = trainer.Trainer()
+evaluator = Evaluator(
+    tr_d, te_d
+)
 scheduler = scheduler.DecayScheduler()
 architecture = [784, 800, 10]
 net = network.Network(architecture, 0.1)
@@ -32,11 +36,7 @@ t.sgd(
     30,
     10,
     0.1,
-    evaluation_data=te_d,
-    monitor_evaluation_cost=False,
-    monitor_evaluation_accuracy=True,
-    monitor_training_cost=False,
-    monitor_training_accuracy=False,
+    evaluator=evaluator,
     scheduler=scheduler
 )
 Io.save(
