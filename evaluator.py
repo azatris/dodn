@@ -28,7 +28,9 @@ class Evaluator(object):
         self.monitor_evaluation_cost = monitor_evaluation_cost
         self.monitor_evaluation_accuracy = monitor_evaluation_accuracy
         self.log_interval = log_interval
-        self.minibatches_count = 1
+        self.minibatches_count = 0
+        self.errors = []
+        self.training_costs = []
 
     def monitor(self, network):
         """ According to evaluator settings, evaluates and logs the
@@ -61,10 +63,12 @@ class Evaluator(object):
             )
 
         print
-
+        self.errors.append(1 - float(accuracy)/len(self.evaluation_data[0]))
+        self.minibatches_count = 0
         return accuracy
 
     def log_training_cost(self, training_cost):
+        self.minibatches_count += 1
         if self.log_interval > 0 and \
                 self.minibatches_count % self.log_interval == 0:
             log.info(
@@ -72,7 +76,9 @@ class Evaluator(object):
                 self.minibatches_count,
                 training_cost/self.minibatches_count
             )
-        self.minibatches_count += 1
+        self.training_costs.append(
+            training_cost/self.minibatches_count
+        )
 
     @staticmethod
     def total_cost(cost_type, data, network, convert=False, chunk_size=5000):

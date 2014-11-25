@@ -66,6 +66,10 @@ class Trainer(object):
                 scheduler.highest_accuracy
             )
 
+        # For plotting use
+        if evaluator is not None:
+            return evaluator.errors, evaluator.training_costs
+
     def update(self, network, xs, ys, learning_rate):
         """ The core of sgd given features xs and their respective
         labels ys. """
