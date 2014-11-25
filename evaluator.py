@@ -75,11 +75,10 @@ class Evaluator(object):
         self.minibatches_count += 1
 
     @staticmethod
-    def total_cost(cost_type, data, network, convert=False):
+    def total_cost(cost_type, data, network, convert=False, chunk_size=5000):
         """ Calculates the cost of given data against the network.
         :param convert: labels digit -> one-hot """
 
-        chunk_size = 4096
         cost = 0.0
         feats, labels = data
         feats_split = np.split(feats, len(feats)/chunk_size)

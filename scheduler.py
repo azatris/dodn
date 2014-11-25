@@ -7,7 +7,7 @@ log = logging.root
 
 
 class Scheduler(object):
-    """ Abstract Scheduler. Eta is learning rate. """
+    """ Abstract Scheduler. """
     __metaclass__ = ABCMeta
 
     def __init__(self):
@@ -32,7 +32,7 @@ class Scheduler(object):
 class ListScheduler(Scheduler):
     """ Scheduler where learning rates are taken from a list for every epoch.
     """
-    def __init__(self, learning_rates=None, max_epochs=99):
+    def __init__(self, learning_rates=None, max_epochs=30):
         if learning_rates is None:
             self.learning_rates = [0.1]
         else:
@@ -64,9 +64,9 @@ class DecayScheduler(Scheduler):
     """
 
     def __init__(
-            self, init_learning_rate=0.2,
-            decay_threshold=2, decay=0.1,
-            stop_threshold=5, max_epochs=99
+            self, init_learning_rate=0.1,
+            decay_threshold=3, decay=0.1,
+            stop_threshold=10, max_epochs=99
     ):
         self.learning_rate = init_learning_rate
         self.decay_threshold = decay_threshold
@@ -100,7 +100,7 @@ class DecayScheduler(Scheduler):
         elif self.no_improvements_decay >= self.decay_threshold:
             self.learning_rate *= self.decay
             self.no_improvements_decay = 0
-            log.info("Learning rate decayed. eta: %f", self.learning_rate)
+            log.info("Learning rate decayed: %f", self.learning_rate)
             print
 
         self.epoch += 1

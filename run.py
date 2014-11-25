@@ -33,15 +33,15 @@ te_d = (np.asarray(te_d[0][:data_size]), np.asarray(te_d[1][:data_size]))
 
 trainer = Trainer()
 evaluator = Evaluator(tr_d, te_d, log_interval=data_size/50)
-#scheduler = scheduler.DecayScheduler()
-architecture = [784, 800, 10]
+scheduler = scheduler.DecayScheduler()
+architecture = [784, 400, 400, 10]
 net = network.Network(architecture, 0.1)
 trainer.sgd(
     net,
     tr_d,
     10,
     evaluator=evaluator,
-    scheduler=None
+    scheduler=scheduler
 )
 Io.save(
     net,
