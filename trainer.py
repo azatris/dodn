@@ -21,7 +21,7 @@ class Trainer(object):
         self.cost = cost
 
     def sgd(self, network, training_data, minibatch_size,
-            evaluator=None, scheduler=None):
+            momentum=0.5, evaluator=None, scheduler=None):
         """ Does stochastic gradient descent training on a given
         network and training data for a number of epochs (times). """
 
@@ -42,12 +42,20 @@ class Trainer(object):
             feats_split = np.split(feats, len(feats)/minibatch_size)
             labels_split = np.split(labels, len(labels)/minibatch_size)
 
+            # Initialize speed layers (which are updated via momentum)
+            speed_layers = np.asarray([
+                (np.zeros_like(L.weights), np.zeros_like(L.biases))
+                for L in network.layers
+            ])
+
             # Descend the gradient
             training_cost = 0.0
             for mini_feats, mini_labels in zip(feats_split, labels_split):
-                training_cost += self.update(
-                    network, mini_feats, mini_labels, learning_rate
+                scalar_cost, speed_layers = self.update(
+                    network, mini_feats, mini_labels,
+                    learning_rate, speed_layers, momentum
                 )
+                training_cost += scalar_cost
                 if evaluator is not None:
                     evaluator.log_training_cost(training_cost)
 
@@ -70,7 +78,7 @@ class Trainer(object):
         if evaluator is not None:
             return evaluator.errors, evaluator.training_costs
 
-    def update(self, network, xs, ys, learning_rate):
+    def update(self, network, xs, ys, learning_rate, speed_layers, momentum):
         """ The core of sgd given features xs and their respective
         labels ys. """
 
@@ -95,9 +103,14 @@ class Trainer(object):
             nabla_w[idx] = np.dot(deltas[idx].T, activations[idx]).T
         learning_rate_scaled = learning_rate/len(xs)
 
+        # Update momentum layers
+        for idx, speed in enumerate(speed_layers):
+            speed[0] = momentum*speed[0] - learning_rate_scaled * nabla_w[idx]
+            speed[1] = momentum*speed[1] - learning_rate_scaled * nabla_b[idx]
+
         # Update weights and biases.
-        for idx, layer in enumerate(network.layers):
-            layer.weights -= learning_rate_scaled * nabla_w[idx]
-            layer.biases -= learning_rate_scaled * nabla_b[idx]
+        for idx, (layer, speed) in enumerate(zip(network.layers, speed_layers)):
+            layer.weights += speed[0]
+            layer.biases += speed[1]
         
-        return scalar_cost
+        return scalar_cost, speed_layers

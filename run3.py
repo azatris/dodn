@@ -33,16 +33,15 @@ data_size = 50000
 
 trainer = Trainer()
 evaluator = Evaluator(tr_d, te_d, log_interval=data_size/50)
-scheduler = scheduler.DecayScheduler()
+# scheduler = scheduler.DecayScheduler()
 architecture = [784, 400, 400, 10]
 net = network.Network(architecture, 0.1)
 errors, training_costs = trainer.sgd(
     net,
     tr_d,
     10,
-    momentum=0.50,
     evaluator=evaluator,
-    scheduler=scheduler
+    scheduler=None
 )
 Io.save(
     net,

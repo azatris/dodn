@@ -65,7 +65,7 @@ class DecayScheduler(Scheduler):
 
     def __init__(
             self, init_learning_rate=0.1,
-            decay_threshold=3, decay=0.1,
+            decay_threshold=3, decay=0.01,
             stop_threshold=10, max_epochs=99
     ):
         self.learning_rate = init_learning_rate
