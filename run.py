@@ -13,6 +13,7 @@ import scheduler
 
 import logging
 import sys
+import pickle
 
 """ Sandbox. """
 
@@ -31,20 +32,49 @@ data_size = 50000
 # tr_d = (np.asarray(tr_d[0][:data_size]), np.asarray(tr_d[1][:data_size]))
 # te_d = (np.asarray(te_d[0][:data_size]), np.asarray(te_d[1][:data_size]))
 
+# Hyperparameters
+lenargs = len(sys.argv)
+lr = float(sys.argv[1]) if lenargs > 1 else 0.1
+mom = float(sys.argv[2]) if lenargs > 2 else 0.5
+dec = float(sys.argv[3]) if lenargs > 3 else 0.01
+decthr = float(sys.argv[4]) if lenargs > 4 else 3
+stopthr = float(sys.argv[5]) if lenargs > 5 else 10
+mb = float(sys.argv[6]) if lenargs > 6 else 10
+
 trainer = Trainer()
 evaluator = Evaluator(tr_d, te_d, log_interval=data_size/50)
-scheduler = scheduler.DecayScheduler()
+scheduler = scheduler.DecayScheduler(
+    init_learning_rate=lr,
+    decay=dec,
+    decay_threshold=decthr,
+    stop_threshold=stopthr
+)
 architecture = [784, 400, 400, 10]
-net = network.Network(architecture, 0.1)
+net = network.Network(architecture, lr)
 errors, training_costs = trainer.sgd(
     net,
     tr_d,
-    10,
-    momentum=0.50,
+    mb,
+    momentum=mom,
     evaluator=evaluator,
     scheduler=scheduler
 )
+curr_time = time.strftime("%Y%m%d-%H%M%S")
 Io.save(
     net,
-    "networks\\" + time.strftime("%Y%m%d-%H%M%S") + str(architecture) + ".json"
+    "networks\\" +
+    curr_time +
+    "_" + str(architecture).replace(' ', '') +
+    "_err" + str(min(errors)*100) +
+    "_lr" + str(lr) +
+    "_mom" + str(mom) +
+    "_dec" + str(dec) +
+    "_decthr" + str(decthr) +
+    "_stopthr" + str(stopthr) +
+    "_mb" + str(mb) +
+    ".json"
+)
+pickle.dump(
+    training_costs,
+    open("networks\\" + curr_time + "_mb_training_costs.p", "wb")
 )

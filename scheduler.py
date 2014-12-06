@@ -100,7 +100,7 @@ class DecayScheduler(Scheduler):
         elif self.no_improvements_decay >= self.decay_threshold:
             self.learning_rate *= self.decay
             self.no_improvements_decay = 0
-            log.info("Learning rate decayed: %f", self.learning_rate)
+            log.info("Learning rate decayed: %s", repr(self.learning_rate))
             print
 
         self.epoch += 1
