@@ -32,6 +32,40 @@ class Trainer(object):
         """ Does method of auxiliary coordinates *MAC) training on a given
         network and training data. """
 
+        def w_step():
+            old_network = copy.deepcopy(network)
+
+            for idx_layer, layer in enumerate(old_network.layers):
+                for idx_weight, weight in enumerate(layer.weights):
+
+                    def w_step_function():
+                        return sum(
+                            zs[idx_layer][idx_weight] -
+                            feed_single(zs[idx_layer - 1], weight)
+                        )
+
+                    res = minimize(w_step_function, weight)
+                    network.layers[idx_layer].weights[idx_weight] = res.x
+
+        def z_step():
+            for idx_z, z in enumerate(zs):
+
+                def z_step_function():
+                    first_term = (
+                        labels[idx_z] - network.layers[-1].feed_forward(z[-1])
+                    ) ** 2
+                    second_term = 0
+                    for idx_layer, layer in enumerate(network.layers):
+                        second_term += (
+                            z[idx_layer] -
+                            layer.feed_forward(z[idx_layer - 1])
+                        ) ** 2
+                    return 0.5 * first_term + \
+                        quadratic_penalty / 2 * second_term
+
+                res = minimize(z_step_function, z)
+                z = res.x
+
         feats, labels = training_data
         log.info("Starting MAC training with...")
         log.info("Feats \t%s", feats.shape)
@@ -46,26 +80,8 @@ class Trainer(object):
         quadratic_penalty = 1  # aka mu
         nested_error_change = sys.maxint
         while nested_error_change > tolerance:
-
-            # w_step()
-            old_network = copy.deepcopy(network)
-            for idx_layer, layer in enumerate(old_network.layers):
-                for idx_weight, weight in enumerate(layer.weights):
-                    def w_step_function():
-                        sum(zs[idx_layer][idx_weight] - feed_single(zs[idx_layer-1], weight))
-                    res = minimize(w_step_function, weight)
-                    network.layers[idx_layer].weights[idx_weight] = res.x
-
-            # z_step()
-            for idx_z, z in enumerate(zs):
-                def z_step_function():
-                    first_term = (labels[idx_z] - network.layers[-1].feed_forward(z[-1]))**2
-                    second_term = 0
-                    for idx_layer, layer in enumerate(network.layers):
-                        second_term += (z[idx_layer] - layer.feed_forward(z[idx_layer-1]))**2
-                    return 0.5*first_term + quadratic_penalty/2*second_term
-                res = minimize(z_step_function, z)
-                z = res.x
+            w_step()
+            z_step()
 
             quadratic_penalty *= 10
             # compute nested_error_change
