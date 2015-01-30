@@ -28,6 +28,48 @@ class Trainer(object):
         np.random.seed(42)  # for consistent results
         self.cost = cost
 
+    def mac(self, network, training_data):
+        """ Does method of auxiliary coordinates *MAC) training on a given
+        network and training data. """
+
+        feats, labels = training_data
+        log.info("Starting MAC training with...")
+        log.info("Feats \t%s", feats.shape)
+        log.info("Labels \t%s", labels.shape)
+
+        # Ideally, this works for multiple data points...
+        # What's the chance, really?
+        zs = network.feed_forward(feats, return_all=True)
+        zs[-1] = labels
+
+        tolerance = 0.01  # nested error threshold
+        quadratic_penalty = 1  # aka mu
+        nested_error_change = sys.maxint
+        while nested_error_change > tolerance:
+
+            # w_step()
+            old_network = copy.deepcopy(network)
+            for idx_layer, layer in enumerate(old_network.layers):
+                for idx_weight, weight in enumerate(layer.weights):
+                    def w_step_function():
+                        sum(zs[idx_layer][idx_weight] - feed_single(zs[idx_layer-1], weight))
+                    res = minimize(w_step_function, weight)
+                    network.layers[idx_layer].weights[idx_weight] = res.x
+
+            # z_step()
+            for idx_z, z in enumerate(zs):
+                def z_step_function():
+                    first_term = (labels[idx_z] - network.layers[-1].feed_forward(z[-1]))**2
+                    second_term = 0
+                    for idx_layer, layer in enumerate(network.layers):
+                        second_term += (z[idx_layer] - layer.feed_forward(z[idx_layer-1]))**2
+                    return 0.5*first_term + quadratic_penalty/2*second_term
+                res = minimize(z_step_function, z)
+                z = res.x
+
+            quadratic_penalty *= 10
+            # compute nested_error_change
+
     def sgd(self, network, training_data, minibatch_size,
             momentum=0.5, evaluator=None, scheduler=None):
         """ Does stochastic gradient descent training on a given
