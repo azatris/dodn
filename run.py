@@ -35,7 +35,7 @@ data_size = 50000
 # Hyperparameters
 lenargs = len(sys.argv)
 lr = float(sys.argv[1]) if lenargs > 1 else 0.1
-mom = float(sys.argv[2]) if lenargs > 2 else 0.5
+mom = float(sys.argv[2]) if lenargs > 2 else 0.6
 dec = float(sys.argv[3]) if lenargs > 3 else 0.01
 decthr = float(sys.argv[4]) if lenargs > 4 else 3
 stopthr = float(sys.argv[5]) if lenargs > 5 else 10

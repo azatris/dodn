@@ -1,6 +1,10 @@
+import copy
+import sys
 
-from evaluator import Evaluator
+from scipy.optimize import minimize
+
 from utils import CrossEntropyCost, Utils
+
 
 __author__ = 'Azatris'
 
@@ -9,6 +13,10 @@ import logging
 from scheduler import ListScheduler
 
 log = logging.root
+
+
+def feed_single(param, weight):
+    pass
 
 
 class Trainer(object):
@@ -24,6 +32,46 @@ class Trainer(object):
             momentum=0.5, evaluator=None, scheduler=None):
         """ Does stochastic gradient descent training on a given
         network and training data for a number of epochs (times). """
+
+        def update(xs, ys, speeds):
+            """ The core of sgd given features xs and their respective
+            labels ys. """
+
+            # Generate predictions given current params.
+            activations = network.feed_forward(xs, return_all=True)
+
+            # Compute the top level error and cost for minibatch.
+            cost_gradient = self.cost.delta(activations[-1], ys)
+            scalar_cost = self.cost.fn(activations[-1], ys)
+
+            # Backpropagate the errors, compute deltas.
+            deltas = network.feed_backward(cost_gradient, activations)
+
+            # Given both passes, compute actual gradients w.r.t params.
+            nabla_b = np.empty(len(network.layers), dtype=object)
+            nabla_w = np.empty(len(network.layers), dtype=object)
+
+            # Compute the sum over minibatch, and compensate in
+            # learning rate scaling it down by mini-batch size.
+            for idx in xrange(0, len(network.layers)):
+                nabla_b[idx] = np.sum(deltas[idx], axis=0)
+                nabla_w[idx] = np.dot(deltas[idx].T, activations[idx]).T
+            learning_rate_scaled = learning_rate/len(xs)
+
+            # Update momentum layers
+            for idx, speed in enumerate(speeds):
+                speed[0] = \
+                    momentum*speed[0] - learning_rate_scaled*nabla_w[idx]
+                speed[1] = \
+                    momentum*speed[1] - learning_rate_scaled*nabla_b[idx]
+
+            # Update weights and biases.
+            for idx, (layer, speed) in \
+                    enumerate(zip(network.layers, speeds)):
+                layer.weights += speed[0]
+                layer.biases += speed[1]
+
+            return scalar_cost, speeds
 
         if scheduler is None:
             scheduler = ListScheduler()
@@ -51,9 +99,8 @@ class Trainer(object):
             # Descend the gradient
             training_cost = 0.0
             for mini_feats, mini_labels in zip(feats_split, labels_split):
-                scalar_cost, speed_layers = self.update(
-                    network, mini_feats, mini_labels,
-                    learning_rate, speed_layers, momentum
+                scalar_cost, speed_layers = update(
+                    mini_feats, mini_labels, speed_layers
                 )
                 training_cost += scalar_cost
                 if evaluator is not None:
@@ -77,40 +124,3 @@ class Trainer(object):
         # For plotting use
         if evaluator is not None:
             return evaluator.errors, evaluator.training_costs
-
-    def update(self, network, xs, ys, learning_rate, speed_layers, momentum):
-        """ The core of sgd given features xs and their respective
-        labels ys. """
-
-        # Generate predictions given current params.
-        activations = network.feed_forward(xs, return_all=True)
-
-        # Compute the top level error and cost for minibatch.
-        cost_gradient = self.cost.delta(activations[-1], ys)
-        scalar_cost = self.cost.fn(activations[-1], ys)
-
-        # Backpropagate the errors, compute deltas.
-        deltas = network.feed_backward(cost_gradient, activations)
-        
-        # Given both passes, compute actual gradients w.r.t params.
-        nabla_b = np.empty(len(network.layers), dtype=object)
-        nabla_w = np.empty(len(network.layers), dtype=object)
-
-        # Compute the sum over minibatch, and compensate in
-        # learning rate scaling it down by mini-batch size.
-        for idx in xrange(0, len(network.layers)):
-            nabla_b[idx] = np.sum(deltas[idx], axis=0)
-            nabla_w[idx] = np.dot(deltas[idx].T, activations[idx]).T
-        learning_rate_scaled = learning_rate/len(xs)
-
-        # Update momentum layers
-        for idx, speed in enumerate(speed_layers):
-            speed[0] = momentum*speed[0] - learning_rate_scaled * nabla_w[idx]
-            speed[1] = momentum*speed[1] - learning_rate_scaled * nabla_b[idx]
-
-        # Update weights and biases.
-        for idx, (layer, speed) in enumerate(zip(network.layers, speed_layers)):
-            layer.weights += speed[0]
-            layer.biases += speed[1]
-        
-        return scalar_cost, speed_layers
