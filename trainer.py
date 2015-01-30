@@ -34,16 +34,33 @@ class Trainer(object):
 
         def w_step():
             def w_step_function():
+                log.debug("Magic undescribable...")
                 return sum(
                     zs[idx_layer][idx_weight] -
                     feed_single(zs[idx_layer - 1], weight)
                 )
 
+            log.debug("Deep copying old network with shape \t%s", network.shape)
             old_network = copy.deepcopy(network)
+            log.debug("Old network copy has shape \t%s", old_network.shape)
+
+            log.debug("Start enumerating through layers...")
             for idx_layer, layer in enumerate(old_network.layers):
+                log.debug(
+                    "At layer number %d with shape %s", idx_layer, layer.shape
+                )
                 for idx_weight, weight in enumerate(layer.weights):
+                    log.debug(
+                        "At weight number %d with shape %s", idx_weight, weight
+                    )
+
+                    log.debug("Start minimizing the weight...")
                     res = minimize(w_step_function, weight)
+                    log.debug("Weight minimized. Result: %s", res)
+
+                    log.debug("Updating network...")
                     network.layers[idx_layer].weights[idx_weight] = res.x
+                    log.debug("Network updated.")
 
         def z_step():
             def z_step_function():
@@ -69,15 +86,22 @@ class Trainer(object):
 
         # Ideally, this works for multiple data points...
         # What's the chance, really?
+        log.debug("Initializing zs...")
         zs = network.feed_forward(feats, return_all=True)
         zs[-1] = labels
+        log.debug("Zs initialized. Shape \t%s", zs.shape)
 
         tolerance = 0.01  # nested error threshold
         quadratic_penalty = 1  # aka mu
         nested_error_change = sys.maxint
         while nested_error_change > tolerance:
+            log.debug("Starting W-step...")
             w_step()
+            log.debug("W-step complete.")
+
+            log.debug("Starting Z-step...")
             z_step()
+            log.debug("W-step complete.")
 
             quadratic_penalty *= 10
             # compute nested_error_change
