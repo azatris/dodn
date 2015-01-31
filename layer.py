@@ -16,7 +16,7 @@ class Layer(object):
         pass
 
     @abstractmethod
-    def feed_forward(self, inputs):
+    def feed_forward(self, inputs, weights_proxy=None):
         """ Computes the output of a layer when given the inputs
         from the previous layer. """
         pass
@@ -49,8 +49,11 @@ class Linear(Layer):
 
         super(Layer, self).__init__()
 
-    def feed_forward(self, inputs):
-        return np.dot(inputs, self.weights) + self.biases
+    def feed_forward(self, inputs, weights_proxy=None):
+        if weights_proxy is not None:
+            return np.dot(inputs, weights_proxy)
+        else:
+            return np.dot(inputs, self.weights) + self.biases
 
     def feed_backward(self, error, activation):
         return np.dot(error, self.weights.transpose())
@@ -68,8 +71,9 @@ class Sigmoid(Linear):
             neurons, inputs_per_neuron, weight_magnitude, weights, biases
         )
 
-    def feed_forward(self, inputs):
-        linear_activations = super(Sigmoid, self).feed_forward(inputs)
+    def feed_forward(self, inputs, weights_proxy=None):
+        linear_activations = \
+            super(Sigmoid, self).feed_forward(inputs, weights_proxy)
         return 1.0 / (1.0 + np.exp(-linear_activations))
 
     def feed_backward(self, error, activation):
@@ -91,8 +95,9 @@ class Softmax(Linear):
             neurons, inputs_per_neuron, weight_magnitude, weights, biases
         )
 
-    def feed_forward(self, inputs):
-        linear_activation = super(Softmax, self).feed_forward(inputs)
+    def feed_forward(self, inputs, weights_proxy=None):
+        linear_activation = \
+            super(Softmax, self).feed_forward(inputs, weights_proxy)
         return Utils.softmax(linear_activation)
 
     def feed_backward(self, error, activation):

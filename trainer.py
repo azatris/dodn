@@ -14,11 +14,6 @@ from scheduler import ListScheduler
 
 log = logging.root
 
-
-def feed_single(param, weight):
-    pass
-
-
 class Trainer(object):
     """ Trains the class i.e. changes the weight and biases of
     a given network using training data and a particular cost
@@ -29,37 +24,42 @@ class Trainer(object):
         self.cost = cost
 
     def mac(self, network, training_data):
-        """ Does method of auxiliary coordinates *MAC) training on a given
+        """ Does method of auxiliary coordinates (MAC) training on a given
         network and training data. """
 
         def w_step():
-            def w_step_function():
-                log.debug("Magic undescribable...")
-                return sum(
-                    zs[idx_layer][idx_weight] -
-                    feed_single(zs[idx_layer - 1], weight)
+            def w_step_function(w):
+                # log.debug("Using W-step function.")
+                # log.debug("zs shape: \t%s", np.shape(zs))
+                # log.debug("zs[idx_layer+1] shape: \t%s", np.shape(zs[idx_layer+1]))
+                # log.debug("zs[idx_layer+1].T[idx_weight] shape: \t%s", np.shape(zs[idx_layer+1].T[idx_weight]))
+                # log.debug("zs[idx_layer] shape: \t%s", np.shape(zs[idx_layer]))
+                # log.debug("w shape: \t%s", np.shape(w))
+                return np.sum(
+                    zs[idx_layer+1].T[idx_weight] -
+                    layer.feed_forward(zs[idx_layer], w)
                 )
 
-            log.debug("Deep copying old network with shape \t%s", network.shape)
+            log.debug("Deep copying old network with shape \t%s", np.shape(network.layers))
             old_network = copy.deepcopy(network)
-            log.debug("Old network copy has shape \t%s", old_network.shape)
+            log.debug("Old network copy has shape \t%s",  np.shape(network.layers))
 
             log.debug("Start enumerating through layers...")
             for idx_layer, layer in enumerate(old_network.layers):
                 log.debug(
-                    "At layer number %d with shape %s", idx_layer, layer.shape
+                    "At layer number %d with shape %s", idx_layer, layer.weights.shape
                 )
-                for idx_weight, weight in enumerate(layer.weights):
+                for idx_weight, weight in enumerate(layer.weights.T):
                     log.debug(
-                        "At weight number %d with shape %s", idx_weight, weight
+                        "At weight number %d with shape %s", idx_weight, weight.shape
                     )
 
                     log.debug("Start minimizing the weight...")
                     res = minimize(w_step_function, weight)
-                    log.debug("Weight minimized. Result: %s", res)
+                    # log.debug("Weight minimized. Result: %s", res)
 
                     log.debug("Updating network...")
-                    network.layers[idx_layer].weights[idx_weight] = res.x
+                    network.layers[idx_layer].weights.T[idx_weight] = res.x
                     log.debug("Network updated.")
 
         def z_step():
