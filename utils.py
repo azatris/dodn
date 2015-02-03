@@ -1,7 +1,10 @@
+import logging
+
 __author__ = 'Azatris'
 
 import numpy as np
 
+log = logging.root
 
 class Utils(object):
     """ Static methods that are not justified enough
@@ -46,7 +49,9 @@ class Utils(object):
     def softmax(v):
         """ Classic implementation of the Softmax algorithm. """
 
+        # log.debug("Using softmax with input: %s shape: %s", v, np.shape(v))
         exp_v = np.exp(v)
+        # log.debug("Exp: %s shape: %s", exp_v, np.shape(exp_v))
         return (exp_v.T / np.sum(exp_v, axis=1)).T + 1e-8
 
 

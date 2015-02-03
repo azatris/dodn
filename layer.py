@@ -1,3 +1,4 @@
+import logging
 from utils import Utils
 
 __author__ = 'Azatris'
@@ -5,6 +6,7 @@ __author__ = 'Azatris'
 from abc import ABCMeta, abstractmethod
 import numpy as np
 
+log = logging.root
 
 class Layer(object):
     """ Abstract Layer. Layer has weights and biases. """
@@ -98,6 +100,7 @@ class Softmax(Linear):
     def feed_forward(self, inputs, weights_proxy=None):
         linear_activation = \
             super(Softmax, self).feed_forward(inputs, weights_proxy)
+        # log.debug("Putting linear_activation into Softmax: shape %s", np.shape(linear_activation))
         return Utils.softmax(linear_activation)
 
     def feed_backward(self, error, activation):

@@ -37,7 +37,7 @@ class Trainer(object):
                 # log.debug("w shape: \t%s", np.shape(w))
                 return np.sum(
                     zs[idx_layer+1].T[idx_weight] -
-                    layer.feed_forward(zs[idx_layer], w)
+                    layer.feed_forward(zs[idx_layer], np.expand_dims(weight, axis=1))
                 )
 
             log.debug("Deep copying old network with shape \t%s", np.shape(network.layers))
@@ -49,6 +49,8 @@ class Trainer(object):
                 log.debug(
                     "At layer number %d with shape %s", idx_layer, layer.weights.shape
                 )
+
+                # This might be turned into a single "minimize", not sure yet.
                 for idx_weight, weight in enumerate(layer.weights.T):
                     log.debug(
                         "At weight number %d with shape %s", idx_weight, weight.shape
