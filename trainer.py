@@ -65,21 +65,39 @@ class Trainer(object):
                     log.debug("Network updated.")
 
         def z_step():
-            def z_step_function():
+            def z_step_function(zed):
+                log.debug("zed shape %s", np.shape(zed))
+                #
+                # log.debug("labels[idx_z] shape %s", np.shape(labels[idx_z]))
+                # log.debug("network.layers[idx_z-1].feed_forward(zed[idx_z-1]) shape %s", np.shape(network.layers[idx_z-1].feed_forward(zed[idx_z-1])))
+                # log.debug("labels[idx_z] - network.layers[idx_z-1].feed_forward(zed[idx_z-1]) shape %s", np.shape(labels[idx_z] - network.layers[idx_z-1].feed_forward(zed[idx_z-1])))
                 first_term = (
-                    labels[idx_z] - network.layers[-1].feed_forward(z[-1])
+                    labels[idx_z] - network.layers[idx_z-1].feed_forward(zed[idx_z-1])  # indexing might be off
                 ) ** 2
+                # log.debug("first_term shape %s", np.shape(first_term))
                 second_term = 0
                 for idx_layer, layer in enumerate(network.layers):
-                    second_term += (
-                        z[idx_layer] -
-                        layer.feed_forward(z[idx_layer - 1])
-                    ) ** 2
-                return 0.5 * first_term + quadratic_penalty / 2 * second_term
+                    # log.debug("zed[idx_layer] %s",  np.shape(zed[idx_layer]))
+                    # log.debug("zed[idx_layer - 1] %s",  np.shape(zed[idx_layer - 1]))
+                    # log.debug("layer.feed_forward(zed[idx_layer - 1]) %s",  np.shape(layer.feed_forward(zed[idx_layer - 1])))
+                    # log.debug("zed[idx_layer] - layer.feed_forward(zed[idx_layer - 1]) %s",  np.shape(zed[idx_layer] - layer.feed_forward(zed[idx_layer - 1])))
 
-            for idx_z, z in enumerate(zs):
+                    second_term += np.linalg.norm(
+                        zed[idx_layer] -
+                        layer.feed_forward(zed[idx_layer - 1])
+                    ) ** 2
+                    # log.debug("second_term: %s\nshape: %s", second_term, np.shape(second_term))
+
+                returnable = 0.5 * first_term + quadratic_penalty / 2 * second_term
+                # log.debug("returnable shape %s", np.shape(returnable))
+                return returnable
+
+            log.debug("Trying to optimise zs.");
+            log.debug("zs shape %s", np.shape(zs))
+            for idx_z, z in enumerate(np.rollaxis(zs, axis=1)):
+                log.debug("Z Index: %d, Shape: %s", idx_z, np.shape(z))
                 res = minimize(z_step_function, z)
-                z = res.x
+                zs[idx_z] = res.x
 
         feats, labels = training_data
         log.info("Starting MAC training with...")
@@ -91,7 +109,7 @@ class Trainer(object):
         log.debug("Initializing zs...")
         zs = network.feed_forward(feats, return_all=True)
         zs[-1] = labels
-        log.debug("Zs initialized. Shape \t%s", zs.shape)
+        log.debug("Zs initialized. Shape \t%s, first shape: %s", zs.shape, zs[0].shape)
 
         tolerance = 0.01  # nested error threshold
         quadratic_penalty = 1  # aka mu
