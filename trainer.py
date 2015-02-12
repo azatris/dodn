@@ -32,7 +32,7 @@ class Trainer(object):
                 quux = np.sum(
                     (zed - layer.feed_forward(zs[idx_layer], w))**2
                 )
-                log.debug("quux: %s", quux)
+                # log.debug("quux: %s", quux)
                 return quux
 
 
