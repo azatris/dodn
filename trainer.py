@@ -30,14 +30,9 @@ class Trainer(object):
         def w_step():
             def w_step_function(w):
                 # log.debug("Using W-step function.")
-                # log.debug("zs shape: \t%s", np.shape(zs))
-                # log.debug("zs[idx_layer+1] shape: \t%s", np.shape(zs[idx_layer+1]))
-                # log.debug("zs[idx_layer+1].T[idx_weight] shape: \t%s", np.shape(zs[idx_layer+1].T[idx_weight]))
-                # log.debug("zs[idx_layer] shape: \t%s", np.shape(zs[idx_layer]))
-                # log.debug("w shape: \t%s", np.shape(w))
                 return np.sum(
                     zs[idx_layer+1].T[idx_weight] -
-                    layer.feed_forward(zs[idx_layer], np.expand_dims(weight, axis=1))
+                    layer.feed_forward(zs[idx_layer], np.expand_dims(w, axis=1))
                 )
 
             log.debug("Deep copying old network with shape \t%s", np.shape(network.layers))
@@ -65,39 +60,43 @@ class Trainer(object):
                     log.debug("Network updated.")
 
         def z_step():
-            def z_step_function(zed):
-                log.debug("zed shape %s", np.shape(zed))
-                #
-                # log.debug("labels[idx_z] shape %s", np.shape(labels[idx_z]))
-                # log.debug("network.layers[idx_z-1].feed_forward(zed[idx_z-1]) shape %s", np.shape(network.layers[idx_z-1].feed_forward(zed[idx_z-1])))
-                # log.debug("labels[idx_z] - network.layers[idx_z-1].feed_forward(zed[idx_z-1]) shape %s", np.shape(labels[idx_z] - network.layers[idx_z-1].feed_forward(zed[idx_z-1])))
-                first_term = (
-                    labels[idx_z] - network.layers[idx_z-1].feed_forward(zed[idx_z-1])  # indexing might be off
-                ) ** 2
-                # log.debug("first_term shape %s", np.shape(first_term))
-                second_term = 0
-                for idx_layer, layer in enumerate(network.layers):
-                    # log.debug("zed[idx_layer] %s",  np.shape(zed[idx_layer]))
-                    # log.debug("zed[idx_layer - 1] %s",  np.shape(zed[idx_layer - 1]))
-                    # log.debug("layer.feed_forward(zed[idx_layer - 1]) %s",  np.shape(layer.feed_forward(zed[idx_layer - 1])))
-                    # log.debug("zed[idx_layer] - layer.feed_forward(zed[idx_layer - 1]) %s",  np.shape(zed[idx_layer] - layer.feed_forward(zed[idx_layer - 1])))
+            def z_layer_step_function(layer_zed):
+                log.debug("STEP FUNCTION count: %d", count[0])
+                count[0] += 1
 
-                    second_term += np.linalg.norm(
-                        zed[idx_layer] -
-                        layer.feed_forward(zed[idx_layer - 1])
-                    ) ** 2
-                    # log.debug("second_term: %s\nshape: %s", second_term, np.shape(second_term))
+                #  not sure about the indexes here
+                multiplier = quadratic_penalty
 
-                returnable = 0.5 * first_term + quadratic_penalty / 2 * second_term
-                # log.debug("returnable shape %s", np.shape(returnable))
+                if idx_layer_zs is 0:
+                    activations = feats[0]
+                else:
+                    # log.debug("idx_layer_zs-1 %d", idx_layer_zs-1)
+                    # log.debug("idx_layer_z %d", idx_layer_z)
+                    # log.debug("old_zs[idx_layer_zs-1][idx_layer_z] %s", np.shape(old_zs[idx_layer_zs-1][idx_layer_z]))
+                    # log.debug("old_zs[idx_layer_zs-1] %s", np.shape(old_zs[idx_layer_zs-1]))
+                    activations = network.layers[idx_layer_zs-1].feed_forward(
+                        old_zs[idx_layer_zs-1][idx_layer_z]
+                    )
+                    if idx_layer_zs is len(old_zs) - 1:
+                        multiplier = 1
+
+                # log.debug("Activation shape: %s", np.shape(activations))
+                returnable = np.sum(
+                    (multiplier*0.5*(layer_zed - activations))**2
+                )
+                # log.debug("Returnable @ z_step_f: %s", np.shape(returnable))
                 return returnable
 
-            log.debug("Trying to optimise zs.");
+            log.debug("Trying to optimise zs.")
             log.debug("zs shape %s", np.shape(zs))
-            for idx_z, z in enumerate(np.rollaxis(zs, axis=1)):
-                log.debug("Z Index: %d, Shape: %s", idx_z, np.shape(z))
-                res = minimize(z_step_function, z)
-                zs[idx_z] = res.x
+            old_zs = copy.deepcopy(zs)
+            for idx_layer_zs, layer_zs in enumerate(old_zs):
+                log.debug("ZS LAYER idx: %d, Shape: %s", idx_layer_zs, np.shape(layer_zs))
+                for idx_layer_z, layer_z in enumerate(layer_zs):
+                    count = [1]
+                    log.debug("Z Idx: %d, Shape: %s", idx_layer_z, np.shape(layer_z))
+                    res = minimize(z_layer_step_function, layer_z)
+                    zs[idx_layer_zs][idx_layer_z] = res.x
 
         feats, labels = training_data
         log.info("Starting MAC training with...")

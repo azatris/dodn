@@ -52,6 +52,9 @@ class Utils(object):
         # log.debug("Using softmax with input: %s shape: %s", v, np.shape(v))
         exp_v = np.exp(v)
         # log.debug("Exp: %s shape: %s", exp_v, np.shape(exp_v))
+        if len(np.shape(exp_v)) is 1:
+            exp_v = np.expand_dims(exp_v, axis=0)
+
         return (exp_v.T / np.sum(exp_v, axis=1)).T + 1e-8
 
 
