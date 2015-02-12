@@ -29,11 +29,12 @@ class Trainer(object):
 
         def w_step():
             def w_step_function(w):
-                # log.debug("Using W-step function.")
-                return np.sum(
-                    zs[idx_layer+1].T[idx_weight] -
-                    layer.feed_forward(zs[idx_layer], np.expand_dims(w, axis=1))
+                quux = np.sum(
+                    (zed - layer.feed_forward(zs[idx_layer], w))**2
                 )
+                log.debug("quux: %s", quux)
+                return quux
+
 
             log.debug("Deep copying old network with shape \t%s", np.shape(network.layers))
             old_network = copy.deepcopy(network)
@@ -52,14 +53,16 @@ class Trainer(object):
                     )
 
                     log.debug("Start minimizing the weight...")
+                    zed = zs[idx_layer+1].T[idx_weight]
                     res = minimize(w_step_function, weight)
                     # log.debug("Weight minimized. Result: %s", res)
 
                     log.debug("Updating network...")
                     network.layers[idx_layer].weights.T[idx_weight] = res.x
-                    log.debug("Network updated.")
+                    log.debug("Network updated. New weight[0]: %s", res.x[0])
 
         def z_step():
+            # TODO: reshape flat zs instead of going by every sample
             def z_layer_step_function(layer_zed):
                 log.debug("STEP FUNCTION count: %d", count[0])
                 count[0] += 1
