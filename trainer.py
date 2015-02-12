@@ -64,8 +64,8 @@ class Trainer(object):
         def z_step():
             # TODO: reshape flat zs instead of going by every sample
             def z_layer_step_function(layer_zed):
-                log.debug("STEP FUNCTION count: %d", count[0])
-                count[0] += 1
+                # log.debug("STEP FUNCTION count: %d", count[0])
+                # count[0] += 1
 
                 #  not sure about the indexes here
                 multiplier = quadratic_penalty
