@@ -53,8 +53,8 @@ class Linear(Layer):
 
     def feed_forward(self, inputs, weights_proxy=None):
         if weights_proxy is not None:
-            if len(np.shape(weights_proxy)) is 1:
-                weights_proxy = np.expand_dims(weights_proxy, axis=1)
+            # if len(np.shape(weights_proxy)) is 1:
+            #     weights_proxy = np.expand_dims(weights_proxy, axis=1)
             return np.dot(inputs, weights_proxy)
         else:
             return np.dot(inputs, self.weights) + self.biases

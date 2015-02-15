@@ -29,8 +29,14 @@ class Trainer(object):
 
         def w_step():
             def w_step_function(w):
+                activation = layer.feed_forward(zs[idx_layer], w)
+                # log.debug("zedshape %s", zed.shape)
+                # log.debug("activationshape  %s", activation.shape)
+                difference = zed - activation
+                square = difference**2
                 quux = np.sum(
-                    (zed - layer.feed_forward(zs[idx_layer], w))**2
+                    # (zed - layer.feed_forward(zs[idx_layer], w))**2
+                    square
                 )
                 # log.debug("quux: %s", quux)
                 return quux
@@ -53,6 +59,9 @@ class Trainer(object):
                     )
 
                     log.debug("Start minimizing the weight...")
+                    log.debug("zs[idx_layer+1] %s", zs[idx_layer+1].shape)
+                    log.debug("zs[idx_layer+1].T %s", zs[idx_layer+1].T.shape)
+                    log.debug("zs[idx_layer+1].T[idx_weight] %s", zs[idx_layer+1].T[idx_weight].shape)
                     zed = zs[idx_layer+1].T[idx_weight]
                     res = minimize(w_step_function, weight)
                     # log.debug("Weight minimized. Result: %s", res)
@@ -63,11 +72,11 @@ class Trainer(object):
 
         def z_step():
             # TODO: reshape flat zs instead of going by every sample
-            def z_layer_step_function(layer_zed):
-                # log.debug("STEP FUNCTION count: %d", count[0])
-                # count[0] += 1
+            def z_layer_step_function(flat_layer_zeds):
+                log.debug("STEP FUNCTION count: %d", count[0])
+                count[0] += 1
 
-                #  not sure about the indexes here
+                layer_zeds = flat_layer_zeds.reshape(zs_shape)
                 multiplier = quadratic_penalty
 
                 if idx_layer_zs is 0:
@@ -78,16 +87,16 @@ class Trainer(object):
                     # log.debug("old_zs[idx_layer_zs-1][idx_layer_z] %s", np.shape(old_zs[idx_layer_zs-1][idx_layer_z]))
                     # log.debug("old_zs[idx_layer_zs-1] %s", np.shape(old_zs[idx_layer_zs-1]))
                     activations = network.layers[idx_layer_zs-1].feed_forward(
-                        old_zs[idx_layer_zs-1][idx_layer_z]
+                        old_zs[idx_layer_zs-1]
                     )
                     if idx_layer_zs is len(old_zs) - 1:
                         multiplier = 1
 
                 # log.debug("Activation shape: %s", np.shape(activations))
                 returnable = np.sum(
-                    (multiplier*0.5*(layer_zed - activations))**2
+                    (multiplier*0.5*(layer_zeds - activations))**2
                 )
-                # log.debug("Returnable @ z_step_f: %s", np.shape(returnable))
+                log.debug("Returnable z_step_f: %s", returnable)
                 return returnable
 
             log.debug("Trying to optimise zs.")
@@ -95,11 +104,10 @@ class Trainer(object):
             old_zs = copy.deepcopy(zs)
             for idx_layer_zs, layer_zs in enumerate(old_zs):
                 log.debug("ZS LAYER idx: %d, Shape: %s", idx_layer_zs, np.shape(layer_zs))
-                for idx_layer_z, layer_z in enumerate(layer_zs):
-                    count = [1]
-                    log.debug("Z Idx: %d, Shape: %s", idx_layer_z, np.shape(layer_z))
-                    res = minimize(z_layer_step_function, layer_z)
-                    zs[idx_layer_zs][idx_layer_z] = res.x
+                zs_shape = np.shape(layer_zs)
+                count = [0]
+                res = minimize(z_layer_step_function, layer_zs, options={'disp': True})
+                zs[idx_layer_zs] = res.x
 
         feats, labels = training_data
         log.info("Starting MAC training with...")
