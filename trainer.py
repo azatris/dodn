@@ -71,7 +71,6 @@ class Trainer(object):
                     log.debug("Network updated. New weight[0]: %s", res.x[0])
 
         def z_step():
-            # TODO: reshape flat zs instead of going by every sample
             def z_layer_step_function(flat_layer_zeds):
                 log.debug("STEP FUNCTION count: %d", count[0])
                 count[0] += 1
