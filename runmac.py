@@ -22,7 +22,7 @@ log.addHandler(handler_stream)
 tr_d, va_d, te_d = mnist_loader.load_data_revamped()
 
 # Subset the data
-data_size = 50000
+data_size = 15
 tr_d = (np.asarray(tr_d[0][:data_size]), np.asarray(tr_d[1][:data_size]))
 
 trainer = Trainer()

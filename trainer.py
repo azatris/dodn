@@ -2,6 +2,7 @@ import copy
 import sys
 
 from scipy.optimize import minimize
+import time
 
 from utils import CrossEntropyCost, Utils
 
@@ -28,17 +29,13 @@ class Trainer(object):
         network and training data. """
 
         def w_step():
-            def w_step_function(w):
-                activation = layer.feed_forward(zs[idx_layer], w)
-                # log.debug("zedshape %s", zed.shape)
-                # log.debug("activationshape  %s", activation.shape)
-                difference = zed - activation
-                square = difference**2
+            def w_step_function(w_flat):
+                w = w_flat.reshape(ws_shape)
                 quux = np.sum(
-                    # (zed - layer.feed_forward(zs[idx_layer], w))**2
-                    square
+                    (zed - layer.feed_forward(zs[idx_layer], w))**2
                 )
                 # log.debug("quux: %s", quux)
+                # time.sleep(0.1)
                 return quux
 
 
@@ -52,27 +49,15 @@ class Trainer(object):
                     "At layer number %d with shape %s", idx_layer, layer.weights.shape
                 )
 
-                # This might be turned into a single "minimize", not sure yet.
-                for idx_weight, weight in enumerate(layer.weights.T):
-                    log.debug(
-                        "At weight number %d with shape %s", idx_weight, weight.shape
-                    )
+                ws_shape = layer.weights.shape
+                zed = zs[idx_layer+1]
+                res = minimize(w_step_function, layer.weights)
+                network.layers[idx_layer].weights = res.x
 
-                    log.debug("Start minimizing the weight...")
-                    log.debug("zs[idx_layer+1] %s", zs[idx_layer+1].shape)
-                    log.debug("zs[idx_layer+1].T %s", zs[idx_layer+1].T.shape)
-                    log.debug("zs[idx_layer+1].T[idx_weight] %s", zs[idx_layer+1].T[idx_weight].shape)
-                    zed = zs[idx_layer+1].T[idx_weight]
-                    res = minimize(w_step_function, weight)
-                    # log.debug("Weight minimized. Result: %s", res)
-
-                    log.debug("Updating network...")
-                    network.layers[idx_layer].weights.T[idx_weight] = res.x
-                    log.debug("Network updated. New weight[0]: %s", res.x[0])
 
         def z_step():
             def z_layer_step_function(flat_layer_zeds):
-                log.debug("STEP FUNCTION count: %d", count[0])
+                # log.debug("STEP FUNCTION count: %d", count[0])
                 count[0] += 1
 
                 layer_zeds = flat_layer_zeds.reshape(zs_shape)
@@ -95,7 +80,7 @@ class Trainer(object):
                 returnable = np.sum(
                     (multiplier*0.5*(layer_zeds - activations))**2
                 )
-                log.debug("Returnable z_step_f: %s", returnable)
+                # log.debug("Returnable z_step_f: %s", returnable)
                 return returnable
 
             log.debug("Trying to optimise zs.")

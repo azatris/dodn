@@ -1,4 +1,5 @@
 import logging
+import time
 
 __author__ = 'Azatris'
 
@@ -56,7 +57,7 @@ class Utils(object):
             total = np.sum(exp_v)
         else:
             total = np.sum(exp_v, axis=1)
-
+        # time.sleep(1)
         return (exp_v.T / total).T + 1e-8
 
 
