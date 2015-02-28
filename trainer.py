@@ -31,8 +31,15 @@ class Trainer(object):
         def w_step():
             def w_step_function(w_flat):
                 w = w_flat.reshape(ws_shape)
+                # log.debug("Feeding forward %s using weights %s", zs[idx_layer].shape, w.shape)
+                activation = layer.feed_forward(zs[idx_layer], w)
+                # log.debug("activation %s", activation.shape)
+                difference = zed - activation
+                # log.debug("difference %s", difference.shape)
+                square = difference **2
+                # log.debug("square %s", square.shape)
                 quux = np.sum(
-                    (zed - layer.feed_forward(zs[idx_layer], w))**2
+                    square
                 )
                 log.debug("layer: %d, quux: %s", idx_layer, quux)
                 # time.sleep(0.1)
@@ -44,15 +51,17 @@ class Trainer(object):
             log.debug("Old network copy has shape \t%s",  np.shape(network.layers))
 
             log.debug("Start enumerating through layers...")
-            for idx_layer, layer in enumerate(old_network.layers):
+            for idx_layer, layer in reversed(list(enumerate(old_network.layers))):
                 log.debug(
                     "At layer number %d with shape %s", idx_layer, layer.weights.shape
                 )
 
                 ws_shape = layer.weights.shape
                 zed = zs[idx_layer+1]
+                log.debug("ws_shape %s", ws_shape)
                 res = minimize(w_step_function, layer.weights)
-                network.layers[idx_layer].weights = res.x
+                log.debug("res.x %s", np.shape(res.x))
+                network.layers[idx_layer].weights = res.x.reshape(ws_shape)
 
 
         def z_step():
@@ -86,12 +95,12 @@ class Trainer(object):
             log.debug("Trying to optimise zs.")
             log.debug("zs shape %s", np.shape(zs))
             old_zs = copy.deepcopy(zs)
-            for idx_layer_zs, layer_zs in enumerate(old_zs):
+            for idx_layer_zs, layer_zs in reversed(list(enumerate(old_zs))):
                 log.debug("ZS LAYER idx: %d, Shape: %s", idx_layer_zs, np.shape(layer_zs))
                 zs_shape = np.shape(layer_zs)
                 count = [0]
                 res = minimize(z_layer_step_function, layer_zs, options={'disp': True})
-                zs[idx_layer_zs] = res.x
+                zs[idx_layer_zs] = res.x.reshape(zs_shape)
 
         feats, labels = training_data
         log.info("Starting MAC training with...")
