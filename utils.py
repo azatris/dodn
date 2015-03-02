@@ -7,6 +7,7 @@ import numpy as np
 
 log = logging.root
 
+
 class Utils(object):
     """ Static methods that are not justified enough
     to be in any of the classes that use them. """
@@ -45,6 +46,22 @@ class Utils(object):
         np.random.set_state(rng_state)
         np.random.shuffle(labels)
         return feats, labels
+
+    @staticmethod
+    def shuffle_in_unison_with_aux(feats, labels, aux_layers):
+        """ Shuffles feats and labels on the first axis such that the
+        change in ordering is identical in both. Equal length arrays
+        assumed. The same is performed on auxiliary coordinates
+        on every layer. """
+
+        rng_state = np.random.get_state()
+        np.random.shuffle(feats)
+        np.random.set_state(rng_state)
+        np.random.shuffle(labels)
+        for layer in aux_layers:
+            np.random.set_state(rng_state)
+            np.random.shuffle(layer)
+        return feats, labels, aux_layers
 
     @staticmethod
     def softmax(v):

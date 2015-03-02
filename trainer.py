@@ -59,7 +59,10 @@ class Trainer(object):
                 ws_shape = layer.weights.shape
                 zed = zs[idx_layer+1]
                 log.debug("ws_shape %s", ws_shape)
-                res = minimize(w_step_function, layer.weights)
+                res = minimize(w_step_function, layer.weights,
+                               # method='Newton-CG',
+                               # jac=False,
+                               options={'disp': True})
                 log.debug("res.x %s", np.shape(res.x))
                 network.layers[idx_layer].weights = res.x.reshape(ws_shape)
 
@@ -99,7 +102,10 @@ class Trainer(object):
                 log.debug("ZS LAYER idx: %d, Shape: %s", idx_layer_zs, np.shape(layer_zs))
                 zs_shape = np.shape(layer_zs)
                 count = [0]
-                res = minimize(z_layer_step_function, layer_zs, options={'disp': True})
+                res = minimize(z_layer_step_function, layer_zs,
+                               # method='Newton-CG',
+                               # jac=False,
+                               options={'disp': True})
                 zs[idx_layer_zs] = res.x.reshape(zs_shape)
 
         feats, labels = training_data
@@ -111,13 +117,15 @@ class Trainer(object):
         # What's the chance, really?
         log.debug("Initializing zs...")
         zs = network.feed_forward(feats, return_all=True)
-        zs[-1] = labels
         log.debug("Zs initialized. Shape \t%s, first shape: %s", zs.shape, zs[0].shape)
 
         tolerance = 0.01  # nested error threshold
         quadratic_penalty = 1  # aka mu
         nested_error_change = sys.maxint
         while nested_error_change > tolerance:
+            Utils.shuffle_in_unison_with_aux(feats, labels, zs)
+            zs[-1] = labels
+
             log.debug("Starting W-step...")
             w_step()
             log.debug("W-step complete.")
