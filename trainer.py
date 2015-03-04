@@ -29,6 +29,45 @@ class Trainer(object):
         network and training data. """
 
         def w_step():
+            def w_top_jac(_):
+                log.debug("w_top_jac zs[idx_layer] %s zs[idx_layer+1] %s, labels %s",
+                          zs[idx_layer].shape, zs[idx_layer+1].shape, labels.shape)
+
+                jacobian = np.dot(zs[idx_layer].T, zs[idx_layer+1] - labels)
+
+                log.debug("w_top_jac jacobian %s", jacobian.shape)
+
+                return np.ndarray.flatten(jacobian)
+
+            def w_hidden_jac(_):
+                # not dependent on the VARIABLE w???
+
+                activation = layer.feed_forward(zs[idx_layer])
+
+                de_dzk = activation - zs[idx_layer+1]
+
+                log.debug(
+                    "w_hidden_jac activation %s ",
+                    activation.shape
+                )
+
+                dzk_dfk = np.dot(activation.T, 1 - activation)
+
+                log.debug(
+                    "w_hidden_jac de_dzk %s dzk_dfk %s, zs[idx_layer] %s",
+                    de_dzk.shape, dzk_dfk.shape, zs[idx_layer].shape
+                )
+
+                jacobian = np.dot(
+                    np.dot(
+                        de_dzk,
+                        dzk_dfk
+                    ).T,
+                    zs[idx_layer]
+                )
+
+                return np.ndarray.flatten(jacobian)
+
             def w_step_function(w_flat):
                 w = w_flat.reshape(ws_shape)
                 # log.debug("Feeding forward %s using weights %s", zs[idx_layer].shape, w.shape)
@@ -59,15 +98,78 @@ class Trainer(object):
                 ws_shape = layer.weights.shape
                 zed = zs[idx_layer+1]
                 log.debug("ws_shape %s", ws_shape)
+                jac = w_top_jac if idx_layer == len(old_network.layers) - 1 \
+                    else w_hidden_jac
                 res = minimize(w_step_function, layer.weights,
                                # method='Newton-CG',
-                               # jac=False,
+                               jac=jac,
                                options={'disp': True})
                 log.debug("res.x %s", np.shape(res.x))
                 network.layers[idx_layer].weights = res.x.reshape(ws_shape)
 
-
         def z_step():
+            def z_top_jac(_):
+                # So even if we're at layer K, we need to calculate J for K-1
+
+                weights = network.layers[idx_layer_zs-1].weights
+
+                log.debug("z_top_jac weights %s labels %s, oldzs %s",
+                          weights.shape, labels.shape, old_zs[idx_layer_zs].shape)
+
+                jacobian = np.sum(
+                    np.dot(old_zs[idx_layer_zs] - labels, weights.T),
+                    axis=0
+                )
+
+                return np.ndarray.flatten(jacobian)
+
+            def z_hidden_jac(_):
+
+                # activations = feats if idx_layer_zs == 1 \
+                #     else network.layers[idx_layer_zs-2].feed_forward(
+                #         old_zs[idx_layer_zs-1]
+                #     )
+
+                log.debug("BLA1: %s", network.layers[idx_layer_zs-1].weights.shape)
+                log.debug("BLA2: %s", old_zs[idx_layer_zs-1].shape)
+
+                activations = network.layers[idx_layer_zs-1].feed_forward(
+                    old_zs[idx_layer_zs-1]
+                )
+
+                log.debug(
+                    "z_hidden_jac activation %s ",
+                    activations.shape
+                )
+
+                de_dzkplus1 = activations - old_zs[idx_layer_zs]
+
+
+                # Not sure if the 1 down there broadcasts properly
+                dzkplus1_dfkplus1 = np.dot(activations.T, 1 - activations)
+
+                weights = network.layers[idx_layer_zs-1].weights
+
+                log.debug(
+                    "z_hidden_jac de_dzkplus1 %s "
+                    "dzkplus1_dfkplus1 %s "
+                    "weights %s",
+                    de_dzkplus1.shape, dzkplus1_dfkplus1.shape, weights.shape
+                )
+
+                jacobian = np.sum(
+                    np.dot(
+                        de_dzkplus1,
+                        np.dot(
+                            dzkplus1_dfkplus1,
+                            weights.T
+                        )
+                    ),
+                    axis=0
+                )
+
+                return np.ndarray.flatten(jacobian)
+
             def z_layer_step_function(flat_layer_zeds):
                 # log.debug("STEP FUNCTION count: %d", count[0])
                 count[0] += 1
@@ -99,14 +201,18 @@ class Trainer(object):
             log.debug("zs shape %s", np.shape(zs))
             old_zs = copy.deepcopy(zs)
             for idx_layer_zs, layer_zs in reversed(list(enumerate(old_zs))):
-                log.debug("ZS LAYER idx: %d, Shape: %s", idx_layer_zs, np.shape(layer_zs))
-                zs_shape = np.shape(layer_zs)
-                count = [0]
-                res = minimize(z_layer_step_function, layer_zs,
-                               # method='Newton-CG',
-                               # jac=False,
-                               options={'disp': True})
-                zs[idx_layer_zs] = res.x.reshape(zs_shape)
+                if idx_layer_zs is not 0:
+                    log.debug("ZS LAYER idx: %d, Shape: %s", idx_layer_zs, np.shape(layer_zs))
+                    zs_shape = np.shape(layer_zs)
+                    count = [0]
+                    jac = z_top_jac if idx_layer_zs == len(old_zs) - 1 \
+                        else z_hidden_jac
+                    res = minimize(z_layer_step_function, layer_zs,
+                                   # method='Newton-CG',
+                                   jac=jac,
+                                   options={'disp': True}
+                    )
+                    zs[idx_layer_zs] = res.x.reshape(zs_shape)
 
         feats, labels = training_data
         log.info("Starting MAC training with...")
@@ -132,7 +238,7 @@ class Trainer(object):
 
             log.debug("Starting Z-step...")
             z_step()
-            log.debug("W-step complete.")
+            log.debug("Z-step complete.")
 
             quadratic_penalty *= 10
             # compute nested_error_change
@@ -164,7 +270,7 @@ class Trainer(object):
             # learning rate scaling it down by mini-batch size.
             for idx in xrange(0, len(network.layers)):
                 nabla_b[idx] = np.sum(deltas[idx], axis=0)
-                nabla_w[idx] = np.dot(deltas[idx].T, activations[idx]).T
+                nabla_w[idx] = np.dot(activations[idx].T, deltas[idx]) # TODO: This can be turned down to 1 transpose
             learning_rate_scaled = learning_rate/len(xs)
 
             # Update momentum layers

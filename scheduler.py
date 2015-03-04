@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+import copy
 import logging
 
 __author__ = 'Azatris'
@@ -86,7 +87,8 @@ class DecayScheduler(Scheduler):
         # Update no-improvements counter
         if accuracy > self.highest_accuracy:
             self.highest_accuracy = accuracy
-            self.highest_accuracy_network = network
+            log.info("Highest accuracy network so far: %s", accuracy)
+            self.highest_accuracy_network = copy.deepcopy(network)
             self.no_improvements_stop = 0
             self.no_improvements_decay = 0
         else:

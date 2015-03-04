@@ -42,7 +42,7 @@ stopthr = float(sys.argv[5]) if lenargs > 5 else 10
 mb = float(sys.argv[6]) if lenargs > 6 else 10
 
 trainer = Trainer()
-evaluator = Evaluator(tr_d, te_d, log_interval=data_size/50)
+evaluator = Evaluator(tr_d, va_d, log_interval=data_size/50)
 scheduler = scheduler.DecayScheduler(
     init_learning_rate=lr,
     decay=dec,
@@ -77,4 +77,8 @@ Io.save(
 pickle.dump(
     training_costs,
     open("networks\\" + curr_time + "_mb_training_costs.p", "wb")
+)
+pickle.dump(
+    training_costs,
+    open("networks\\" + curr_time + "_errors.p", "wb")
 )
