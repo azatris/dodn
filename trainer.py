@@ -127,8 +127,8 @@ class Trainer(object):
                 # log.debug("BLA1: %s", network.layers[idx_layer_zs-1].weights.shape)
                 # log.debug("BLA2: %s", old_zs[idx_layer_zs-1].shape)
 
-                activations = network.layers[idx_layer_zs-1].feed_forward(
-                    old_zs[idx_layer_zs-1]
+                activations = network.layers[idx_layer_zs].feed_forward(
+                    old_zs[idx_layer_zs]
                 )
 
                 log.debug(
@@ -136,11 +136,11 @@ class Trainer(object):
                     activations.shape
                 )
 
-                de_dzkplus1 = activations - old_zs[idx_layer_zs]
+                de_dzkplus1 = activations - old_zs[idx_layer_zs+1] #wrong idx?
 
                 dzkplus1_dfkplus1 = activations*(1 - activations)
 
-                weights = network.layers[idx_layer_zs-1].weights
+                weights = network.layers[idx_layer_zs].weights
 
                 log.debug(
                     "z_hidden_jac de_dzkplus1 %s "
@@ -150,10 +150,7 @@ class Trainer(object):
                 )
 
                 # if that work can just transpose the whole thing instead
-                jacobian = np.sum(
-                    np.dot((de_dzkplus1*dzkplus1_dfkplus1).T, weights.T),
-                    axis=0
-                )
+                jacobian = np.dot(de_dzkplus1*dzkplus1_dfkplus1, weights.T)
 
                 log.debug("z_hidden_jac jacobian %s", jacobian.shape)
 
