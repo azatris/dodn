@@ -43,7 +43,7 @@ class Trainer(object):
                 return np.ndarray.flatten(jacobian)
 
             def w_hidden_jac(_):
-                # not dependent on the VARIABLE w???
+                # not dependent on the VARIABLE w??? Probably doesn't matter...
 
                 activations = layer.feed_forward(zs[idx_layer])
 
@@ -111,27 +111,21 @@ class Trainer(object):
             def z_top_jac(_):
                 # So even if we're at layer K, we need to calculate J for K-1
 
-                weights = network.layers[idx_layer_zs-1].weights
+                weights = network.layers[idx_layer_zs].weights
 
                 log.debug("z_top_jac weights %s labels %s, oldzs %s",
                           weights.shape, labels.shape, old_zs[idx_layer_zs].shape)
 
-                jacobian = np.sum(
-                    np.dot(old_zs[idx_layer_zs] - labels, weights.T),
-                    axis=0
-                )
+                jacobian = np.dot(old_zs[idx_layer_zs+1] - labels, weights.T)
+
+                log.debug("z_top_jac jacobian %s", jacobian.shape)
 
                 return np.ndarray.flatten(jacobian)
 
             def z_hidden_jac(_):
 
-                # activations = feats if idx_layer_zs == 1 \
-                #     else network.layers[idx_layer_zs-2].feed_forward(
-                #         old_zs[idx_layer_zs-1]
-                #     )
-
-                log.debug("BLA1: %s", network.layers[idx_layer_zs-1].weights.shape)
-                log.debug("BLA2: %s", old_zs[idx_layer_zs-1].shape)
+                # log.debug("BLA1: %s", network.layers[idx_layer_zs-1].weights.shape)
+                # log.debug("BLA2: %s", old_zs[idx_layer_zs-1].shape)
 
                 activations = network.layers[idx_layer_zs-1].feed_forward(
                     old_zs[idx_layer_zs-1]
@@ -155,29 +149,18 @@ class Trainer(object):
                     de_dzkplus1.shape, dzkplus1_dfkplus1.shape, weights.shape
                 )
 
-                # jacobian = np.sum(
-                #     np.dot(
-                #         de_dzkplus1,
-                #         np.dot(
-                #             dzkplus1_dfkplus1,
-                #             weights.T
-                #         )
-                #     ),
-                #     axis=0
-                # )
-
                 # if that work can just transpose the whole thing instead
                 jacobian = np.sum(
                     np.dot((de_dzkplus1*dzkplus1_dfkplus1).T, weights.T),
                     axis=0
                 )
 
-
+                log.debug("z_hidden_jac jacobian %s", jacobian.shape)
 
                 return np.ndarray.flatten(jacobian)
 
             def z_layer_step_function(flat_layer_zeds):
-                # log.debug("STEP FUNCTION count: %d", count[0])
+                log.debug("STEP FUNCTION count: %d", count[0])
                 count[0] += 1
 
                 layer_zeds = flat_layer_zeds.reshape(zs_shape)
@@ -186,32 +169,34 @@ class Trainer(object):
                 if idx_layer_zs is 0:
                     activations = feats[0]
                 else:
-                    # log.debug("idx_layer_zs-1 %d", idx_layer_zs-1)
-                    # log.debug("idx_layer_z %d", idx_layer_z)
-                    # log.debug("old_zs[idx_layer_zs-1][idx_layer_z] %s", np.shape(old_zs[idx_layer_zs-1][idx_layer_z]))
-                    # log.debug("old_zs[idx_layer_zs-1] %s", np.shape(old_zs[idx_layer_zs-1]))
+                    log.debug("idx_layer_zs-1 %d", idx_layer_zs-1)
+                    log.debug("idx_layer_z %d", idx_layer_zs)
+                    log.debug("old_zs[idx_layer_zs-1][idx_layer_z] %s", np.shape(old_zs[idx_layer_zs-1][idx_layer_zs]))
+                    log.debug("old_zs[idx_layer_zs-1] %s", np.shape(old_zs[idx_layer_zs-1]))
+                    log.debug("layer_zeds %s", np.shape(layer_zeds))
                     activations = network.layers[idx_layer_zs-1].feed_forward(
                         old_zs[idx_layer_zs-1]
                     )
                     if idx_layer_zs is len(old_zs) - 1:
                         multiplier = 1
 
-                # log.debug("Activation shape: %s", np.shape(activations))
+                log.debug("Activation shape: %s", np.shape(activations))
                 returnable = np.sum(
                     (multiplier*0.5*(layer_zeds - activations))**2
                 )
-                # log.debug("Returnable z_step_f: %s", returnable)
+                log.debug("Returnable z_step_f: %s", returnable)
                 return returnable
 
             log.debug("Trying to optimise zs.")
             log.debug("zs shape %s", np.shape(zs))
             old_zs = copy.deepcopy(zs)
             for idx_layer_zs, layer_zs in reversed(list(enumerate(old_zs))):
-                if idx_layer_zs is not 0:
+                if idx_layer_zs is not len(old_zs) - 1 \
+                        and idx_layer_zs is not 0:  # zs contains labels and inputs
                     log.debug("ZS LAYER idx: %d, Shape: %s", idx_layer_zs, np.shape(layer_zs))
                     zs_shape = np.shape(layer_zs)
                     count = [0]
-                    jac = z_top_jac if idx_layer_zs == len(old_zs) - 1 \
+                    jac = z_top_jac if idx_layer_zs == len(old_zs) - 2 \
                         else z_hidden_jac
                     res = minimize(z_layer_step_function, layer_zs,
                                    method='Newton-CG',
@@ -225,8 +210,6 @@ class Trainer(object):
         log.info("Feats \t%s", feats.shape)
         log.info("Labels \t%s", labels.shape)
 
-        # Ideally, this works for multiple data points...
-        # What's the chance, really?
         log.debug("Initializing zs...")
         zs = network.feed_forward(feats, return_all=True)
         log.debug("Zs initialized. Shape \t%s, first shape: %s", zs.shape, zs[0].shape)
@@ -282,7 +265,7 @@ class Trainer(object):
             # learning rate scaling it down by mini-batch size.
             for idx in xrange(0, len(network.layers)):
                 nabla_b[idx] = np.sum(deltas[idx], axis=0)
-                nabla_w[idx] = np.dot(activations[idx].T, deltas[idx]) # TODO: This can be turned down to 1 transpose
+                nabla_w[idx] = np.dot(activations[idx].T, deltas[idx]).T # TODO: This can be turned down to 1 transpose
             learning_rate_scaled = learning_rate/len(xs)
 
             # Update momentum layers
