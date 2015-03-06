@@ -32,14 +32,15 @@ class Trainer(object):
         network and training data. """
 
         def w_step():
-            def w_top_jac(_):
-                #
+            def w_top_jac(w_flat):
+                w = w_flat.reshape(ws_shape)
+
                 # jacobian = np.dot(zs[idx_layer].T, zs[idx_layer+1] - labels)
 
                 # log.debug("w_top_jac jacobian %s", jacobian.shape)
 
                 activations = network.layers[idx_layer].feed_forward(
-                    zs[idx_layer]
+                    zs[idx_layer], w
                 )
 
                 # log.debug(
@@ -58,10 +59,10 @@ class Trainer(object):
 
                 return np.ndarray.flatten(jacobian)
 
-            def w_hidden_jac(_):
-                # not dependent on the VARIABLE w??? Probably doesn't matter...
+            def w_hidden_jac(w_flat):
+                w = w_flat.reshape(ws_shape)
 
-                activations = layer.feed_forward(zs[idx_layer])
+                activations = layer.feed_forward(zs[idx_layer], w)
 
                 de_dzk = activations - zs[idx_layer+1]
 
@@ -122,38 +123,42 @@ class Trainer(object):
             log.debug("Start enumerating through layers...")
             for idx_layer, layer in \
                     reversed(list(enumerate(old_network.layers))):
+                if idx_layer is not 0:  # meaning input layer weights...
+                    log.debug(
+                        "At layer number %d with shape %s",
+                        idx_layer, layer.weights.shape
+                    )
 
-                log.debug(
-                    "At layer number %d with shape %s",
-                    idx_layer, layer.weights.shape
-                )
+                    ws_shape = layer.weights.shape
+                    zed = zs[idx_layer+1]
 
-                ws_shape = layer.weights.shape
-                zed = zs[idx_layer+1]
+                    if idx_layer == len(old_network.layers) - 1:
+                        jac = w_top_jac
+                    else:
+                        jac = w_hidden_jac
 
-                if idx_layer == len(old_network.layers) - 1:
-                    jac = w_top_jac
-                else:
-                    jac = w_hidden_jac
+                    log.debug("Start minimizing W step function...")
+                    res = minimize(
+                        w_step_function,
+                        layer.weights,
+                        method='Newton-CG',
+                        jac=jac,
+                        options={'disp': True}
+                    )
+                    log.debug("W step function minimized.")
 
-                log.debug("Start minimizing W step function...")
-                res = minimize(
-                    w_step_function,
-                    layer.weights,
-                    method='Newton-CG',
-                    jac=jac,
-                    options={'disp': True}
-                )
-                log.debug("W step function minimized.")
+                    # log.debug("res.x %s", np.shape(res.x))
 
-                # log.debug("res.x %s", np.shape(res.x))
-
-                network.layers[idx_layer].weights = res.x.reshape(ws_shape)
-                log.debug("Updated network with optimized weights.")
+                    network.layers[idx_layer].weights = res.x.reshape(ws_shape)
+                    log.debug("Updated network with optimized weights.")
 
         def z_step():
-            def z_top_jac(_):
+            def z_top_jac(flat_layer_zeds):
+                layer_zeds = flat_layer_zeds.reshape(zs_shape)
                 weights = network.layers[idx_layer_zs].weights
+
+                activations = \
+                    network.layers[idx_layer_zs-1].feed_forward(layer_zeds)
 
                 # log.debug("z_top_jac weights %s labels %s, oldzs %s",
                 #           weights.shape,
@@ -161,13 +166,17 @@ class Trainer(object):
                 #           old_zs[idx_layer_zs].shape
                 # )
 
-                jacobian = np.dot(old_zs[idx_layer_zs+1] - labels, weights.T)
+                jacobian = np.dot(
+                    activations - old_zs[idx_layer_zs+1],
+                    weights.T
+                )
 
                 # log.debug("z_top_jac jacobian %s", jacobian.shape)
 
                 return np.ndarray.flatten(jacobian)
 
-            def z_hidden_jac(_):
+            def z_hidden_jac(flat_layer_zeds):
+                layer_zeds = flat_layer_zeds.reshape(zs_shape)
 
                 # log.debug(
                 #     "BLA1: %s",
@@ -176,7 +185,7 @@ class Trainer(object):
                 # log.debug("BLA2: %s", old_zs[idx_layer_zs-1].shape)
 
                 activations = network.layers[idx_layer_zs].feed_forward(
-                    old_zs[idx_layer_zs]
+                    layer_zeds
                 )
 
                 # log.debug(
