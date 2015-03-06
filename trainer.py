@@ -33,14 +33,28 @@ class Trainer(object):
 
         def w_step():
             def w_top_jac(_):
-                # log.debug(
-                #     "w_top_jac zs[idx_layer] %s zs[idx_layer+1] %s, labels%s",
-                #     zs[idx_layer].shape, zs[idx_layer+1].shape, labels.shape
-                # )
-
-                jacobian = np.dot(zs[idx_layer].T, zs[idx_layer+1] - labels)
+                #
+                # jacobian = np.dot(zs[idx_layer].T, zs[idx_layer+1] - labels)
 
                 # log.debug("w_top_jac jacobian %s", jacobian.shape)
+
+                activations = network.layers[idx_layer].feed_forward(
+                    zs[idx_layer]
+                )
+
+                # log.debug(
+                #     "w_top_jac zs[idx_layer] "
+                #     "%s activations %s, "
+                #     "zs[idx_layer+1] %s",
+                #     zs[idx_layer].shape,
+                #     activations.shape,
+                #     zs[idx_layer+1].shape
+                # )
+
+                jacobian = np.dot(
+                    zs[idx_layer].T,
+                    activations - zs[idx_layer+1]
+                )
 
                 return np.ndarray.flatten(jacobian)
 
@@ -54,7 +68,7 @@ class Trainer(object):
                 # log.debug(
                 #     "w_hidden_jac activations %s ",
                 #     activations.shape
-                # )
+                # )jacobian
 
                 dzk_dfk = activations*(1 - activations)
 
@@ -73,24 +87,25 @@ class Trainer(object):
             def w_step_function(w_flat):
                 w = w_flat.reshape(ws_shape)
 
+                log.debug("W step function initiated.")
+
                 # log.debug(
                 #     "Feeding forward %s using weights %s",
                 #     zs[idx_layer].shape, w.shape
                 # )
 
                 activations = layer.feed_forward(zs[idx_layer], w)
-                # log.debug("activations %s", activations.shape)
+                log.debug("activations %s", activations.shape)
 
                 difference = zed - activations
-                # log.debug("difference %s", difference.shape)
+                log.debug("difference %s", difference.shape)
 
                 square = difference**2
-                # log.debug("square %s", square.shape)
+                log.debug("square %s", square.shape)
 
-                value = np.sum(
-                    square
-                )
-                # log.debug("layer: %d, value: %s", idx_layer, value)
+                value = np.sum(square)
+                log.debug("W step function value: %s", value)
+
                 # time.sleep(0.1)
                 return value
 
