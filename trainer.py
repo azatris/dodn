@@ -123,34 +123,33 @@ class Trainer(object):
             log.debug("Start enumerating through layers...")
             for idx_layer, layer in \
                     reversed(list(enumerate(old_network.layers))):
-                if idx_layer is not 0:  # meaning input layer weights...
-                    log.debug(
-                        "At layer number %d with shape %s",
-                        idx_layer, layer.weights.shape
-                    )
+                log.debug(
+                    "At layer number %d with shape %s",
+                    idx_layer, layer.weights.shape
+                )
 
-                    ws_shape = layer.weights.shape
-                    zed = zs[idx_layer+1]
+                ws_shape = layer.weights.shape
+                zed = zs[idx_layer+1]
 
-                    if idx_layer == len(old_network.layers) - 1:
-                        jac = w_top_jac
-                    else:
-                        jac = w_hidden_jac
+                if idx_layer == len(old_network.layers) - 1:
+                    jac = w_top_jac
+                else:
+                    jac = w_hidden_jac
 
-                    log.debug("Start minimizing W step function...")
-                    res = minimize(
-                        w_step_function,
-                        layer.weights,
-                        method='Newton-CG',
-                        jac=jac,
-                        options={'disp': True}
-                    )
-                    log.debug("W step function minimized.")
+                log.debug("Start minimizing W step function...")
+                res = minimize(
+                    w_step_function,
+                    layer.weights,
+                    method='Newton-CG',
+                    jac=jac,
+                    options={'disp': True}
+                )
+                log.debug("W step function minimized.")
 
-                    # log.debug("res.x %s", np.shape(res.x))
+                # log.debug("res.x %s", np.shape(res.x))
 
-                    network.layers[idx_layer].weights = res.x.reshape(ws_shape)
-                    log.debug("Updated network with optimized weights.")
+                network.layers[idx_layer].weights = res.x.reshape(ws_shape)
+                log.debug("Updated network with optimized weights.")
 
         def z_step():
             def z_top_jac(flat_layer_zeds):
@@ -283,11 +282,14 @@ class Trainer(object):
                     log.debug("Updated Z by optimized Z.")
 
         feats, labels = training_data
+        feats, labels = Utils.shuffle_in_unison(feats, labels)
+
         log.info("Starting MAC training with...")
         log.info("Feats \t%s", feats.shape)
         log.info("Labels \t%s", labels.shape)
 
         zs = network.feed_forward(feats, return_all=True)
+        zs[-1] = labels
         log.debug("Z initialized.")
 
         tolerance = 0.01  # nested error threshold
@@ -295,9 +297,6 @@ class Trainer(object):
         nested_error_change = sys.maxint
 
         while nested_error_change > tolerance:
-            Utils.shuffle_in_unison_with_aux(feats, labels, zs)
-            zs[-1] = labels
-
             log.info("Starting W-step...")
             w_step()
             log.info("W-step complete.")

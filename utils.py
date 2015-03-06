@@ -47,6 +47,7 @@ class Utils(object):
         np.random.shuffle(labels)
         return feats, labels
 
+    # Broken, don't use.
     @staticmethod
     def shuffle_in_unison_with_aux(feats, labels, aux_layers):
         """ Shuffles feats and labels on the first axis such that the
