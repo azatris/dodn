@@ -88,7 +88,7 @@ class Trainer(object):
             def w_step_function(w_flat):
                 w = w_flat.reshape(ws_shape)
 
-                log.debug("W step function initiated.")
+                # log.debug("W step function initiated.")
 
                 # log.debug(
                 #     "Feeding forward %s using weights %s",
@@ -96,13 +96,13 @@ class Trainer(object):
                 # )
 
                 activations = layer.feed_forward(zs[idx_layer], w)
-                log.debug("activations %s", activations.shape)
+                # log.debug("activations %s", activations.shape)
 
                 difference = zed - activations
-                log.debug("difference %s", difference.shape)
+                # log.debug("difference %s", difference.shape)
 
                 square = difference**2
-                log.debug("square %s", square.shape)
+                # log.debug("square %s", square.shape)
 
                 value = np.sum(square)
                 log.debug("W step function value: %s", value)
@@ -157,7 +157,7 @@ class Trainer(object):
                 weights = network.layers[idx_layer_zs].weights
 
                 activations = \
-                    network.layers[idx_layer_zs-1].feed_forward(layer_zeds)
+                    network.layers[idx_layer_zs].feed_forward(layer_zeds)
 
                 # log.debug("z_top_jac weights %s labels %s, oldzs %s",
                 #           weights.shape,
@@ -213,35 +213,31 @@ class Trainer(object):
                 return np.ndarray.flatten(jacobian)
 
             def z_layer_step_function(flat_layer_zeds):
-                # log.debug("STEP FUNCTION count: %d", count[0])
-                # count[0] += 1
-
                 layer_zeds = flat_layer_zeds.reshape(zs_shape)
+
+                log.debug("STEP FUNCTION count: %d", count[0])
+                count[0] += 1
+
                 multiplier = quadratic_penalty
 
-                if idx_layer_zs is 0:
-                    activations = feats[0]
-                else:
-                    # log.debug("idx_layer_zs-1 %d", idx_layer_zs-1)
-                    # log.debug("idx_layer_z %d", idx_layer_zs)
-                    # log.debug("old_zs[idx_layer_zs-1][idx_layer_z] %s",
-                    #           np.shape(old_zs[idx_layer_zs-1][idx_layer_zs]))
-                    # log.debug("old_zs[idx_layer_zs-1] %s",
-                    #           np.shape(old_zs[idx_layer_zs-1]))
-                    # log.debug("layer_zeds %s", np.shape(layer_zeds))
+                # log.debug("idx_layer_zs-1 %d", idx_layer_zs-1)
+                # log.debug("idx_layer_z %d", idx_layer_zs)
+                # log.debug("old_zs[idx_layer_zs-1] %s",
+                #           np.shape(old_zs[idx_layer_zs-1]))
+                # log.debug("layer_zeds %s", np.shape(layer_zeds))
 
-                    activations = network.layers[idx_layer_zs-1].feed_forward(
-                        old_zs[idx_layer_zs-1]
-                    )
-                    if idx_layer_zs is len(old_zs) - 1:
-                        multiplier = 1
+                activations = network.layers[idx_layer_zs].feed_forward(
+                    layer_zeds
+                )
+                if idx_layer_zs is len(old_zs) - 2:
+                    multiplier = 1
 
                 # log.debug("Activation shape: %s", np.shape(activations))
 
                 returnable = np.sum(
-                    (multiplier*0.5*(layer_zeds - activations))**2
+                    (multiplier*0.5*(old_zs[idx_layer_zs+1] - activations))**2
                 )
-                # log.debug("Returnable z_step_f: %s", returnable)
+                log.debug("Returnable z_step_f: %s", returnable)
 
                 return returnable
 
@@ -261,7 +257,7 @@ class Trainer(object):
 
                     zs_shape = np.shape(layer_zs)
 
-                    # count = [0]
+                    count = [0]
 
                     if idx_layer_zs == len(old_zs) - 2:
                         jac = z_top_jac
@@ -311,7 +307,7 @@ class Trainer(object):
             # log.debug("Forcing garbage collection...")
             gc.collect()
 
-            quadratic_penalty *= 10
+            quadratic_penalty *= 10  # TODO: 10 runs forever... but 1 too little
 
             log.info(
                 "Quadratic penalty increased. New QP: %d",
