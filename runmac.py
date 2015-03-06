@@ -26,9 +26,10 @@ data_size = 50000
 tr_d = (np.asarray(tr_d[0][:data_size]), np.asarray(tr_d[1][:data_size]))
 
 trainer = Trainer()
-architecture = [784, 20, 30, 10]
+architecture = [784, 400, 400, 10]
 net = network.Network(architecture, 0.1)
 trainer.mac(
     net,
-    tr_d
+    tr_d,
+    va_d
 )
