@@ -104,29 +104,37 @@ class Trainer(object):
             #     np.shape(network.layers)
             # )
 
-            # log.debug("Start enumerating through layers...")
+            log.debug("Start enumerating through layers...")
             for idx_layer, layer in \
                     reversed(list(enumerate(old_network.layers))):
 
-                # log.debug(
-                #     "At layer number %d with shape %s",
-                #     idx_layer, layer.weights.shape
-                # )
+                log.debug(
+                    "At layer number %d with shape %s",
+                    idx_layer, layer.weights.shape
+                )
 
                 ws_shape = layer.weights.shape
                 zed = zs[idx_layer+1]
 
-                # log.debug("ws_shape %s", ws_shape)
-                jac = w_top_jac if idx_layer == len(old_network.layers) - 1 \
-                    else w_hidden_jac
+                if idx_layer == len(old_network.layers) - 1:
+                    jac = w_top_jac
+                else:
+                    jac = w_hidden_jac
 
-                res = minimize(w_step_function, layer.weights,
-                               method='Newton-CG',
-                               jac=jac,
-                               options={'disp': True})
+                log.debug("Start minimizing W step function...")
+                res = minimize(
+                    w_step_function,
+                    layer.weights,
+                    method='Newton-CG',
+                    jac=jac,
+                    options={'disp': True}
+                )
+                log.debug("W step function minimized.")
+
                 # log.debug("res.x %s", np.shape(res.x))
 
                 network.layers[idx_layer].weights = res.x.reshape(ws_shape)
+                log.debug("Updated network with optimized weights.")
 
         def z_step():
             def z_top_jac(_):
@@ -222,16 +230,22 @@ class Trainer(object):
                 # zs contains labels and inputs, but we don't optimise them
                 if idx_layer_zs is not len(old_zs) - 1 \
                         and idx_layer_zs is not 0:
-                    # log.debug(
-                    #     "ZS LAYER idx: %d, Shape: %s",
-                    #     idx_layer_zs, np.shape(layer_zs)
-                    # )
+
+                    log.debug(
+                        "At layer number %d with shape %s",
+                        idx_layer_zs, layer_zs.shape
+                    )
 
                     zs_shape = np.shape(layer_zs)
-                    # count = [0]
-                    jac = z_top_jac if idx_layer_zs == len(old_zs) - 2 \
-                        else z_hidden_jac
 
+                    # count = [0]
+
+                    if idx_layer_zs == len(old_zs) - 2:
+                        jac = z_top_jac
+                    else:
+                        jac = z_hidden_jac
+
+                    log.debug("Start minimizing Z step function...")
                     res = minimize(
                         z_layer_step_function,
                         layer_zs,
@@ -239,46 +253,55 @@ class Trainer(object):
                         jac=jac,
                         options={'disp': True}
                     )
+                    log.debug("Z step function minimized. ")
+
                     zs[idx_layer_zs] = res.x.reshape(zs_shape)
+                    log.debug("Updated Z by optimized Z.")
 
         feats, labels = training_data
         log.info("Starting MAC training with...")
         log.info("Feats \t%s", feats.shape)
         log.info("Labels \t%s", labels.shape)
 
-        # log.debug("Initializing zs...")
         zs = network.feed_forward(feats, return_all=True)
-        # log.debug("Zs initialized.")
-
-        # log.debug("Shape \t%s, first shape: %s", zs.shape, zs[0].shape)
+        log.debug("Z initialized.")
 
         tolerance = 0.01  # nested error threshold
         quadratic_penalty = 1  # aka mu
         nested_error_change = sys.maxint
+
         while nested_error_change > tolerance:
             Utils.shuffle_in_unison_with_aux(feats, labels, zs)
             zs[-1] = labels
 
-            # log.debug("Starting W-step...")
+            log.info("Starting W-step...")
             w_step()
-            # log.debug("W-step complete.")
+            log.info("W-step complete.")
 
             # log.debug("Forcing garbage collection...")
             gc.collect()
 
-            # log.debug("Starting Z-step...")
+            log.info("Starting Z-step...")
             z_step()
-            # log.debug("Z-step complete.")
+            log.info("Z-step complete.")
 
             # log.debug("Forcing garbage collection...")
             gc.collect()
-
-            log.info(
-                "%d", eva.Evaluator.accuracy(validation_data, network)
-            )
 
             quadratic_penalty *= 10
-            # compute nested_error_change
+
+            log.info(
+                "Quadratic penalty increased. New QP: %d",
+                quadratic_penalty
+            )
+
+            log.info(
+                "Accuracy: \t%d\n", eva.Evaluator.accuracy(
+                    validation_data, network
+                )
+            )
+
+            # TODO: compute nested_error_change
 
     def sgd(self, network, training_data, minibatch_size,
             momentum=0.5, evaluator=None, scheduler=None):
