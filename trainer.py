@@ -363,7 +363,7 @@ class Sgd(Trainer):
             # learning rate scaling it down by mini-batch size.
             for idx in xrange(0, len(network.layers)):
                 nabla_b[idx] = np.sum(deltas[idx], axis=0)
-                nabla_w[idx] = np.dot(activations[idx].T, deltas[idx]) # TODO: This can be turned down to 1 transpose
+                nabla_w[idx] = np.dot(activations[idx].T, deltas[idx])
             learning_rate_scaled = learning_rate/len(xs)
 
             # Update momentum layers

@@ -106,7 +106,7 @@ class Evaluator(object):
             a = network.feed_forward(mini_feats)
             if convert:
                 mini_labels = Utils.vectorize_digits(mini_labels)
-            cost += np.sum(cost_type.fn(a, mini_labels), axis=0)
+            cost += cost_type.fn(a, mini_labels)
         return cost/len(feats)
 
     @staticmethod
