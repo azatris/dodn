@@ -78,6 +78,10 @@ class Utils(object):
         # time.sleep(1)
         return (exp_v.T / total).T + 1e-8
 
+    @staticmethod
+    def error_fraction(correct_data, data_length):
+        return 1 - float(correct_data) / data_length
+
 
 class CrossEntropyCost:
     """ Functions related to cross entropy cost. """

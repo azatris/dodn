@@ -412,7 +412,7 @@ class Sgd(Trainer):
                 )
                 training_cost += scalar_cost
                 if evaluator is not None:
-                    evaluator.log_training_cost(training_cost)
+                    evaluator.log_training_costs(training_cost)
 
             # Network evaluation and learning rate scheduling
             accuracy = None

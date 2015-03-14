@@ -13,10 +13,9 @@ class Evaluator(object):
     """
 
     def __init__(self, training_data, validation_data,
-                 monitor_validation_cost=False,
-                 monitor_validation_accuracy=True,
-                 monitor_training_cost=False,
-                 monitor_training_accuracy=False,
+                 monitor_validation_cost=True,
+                 monitor_training_cost=True,
+                 monitor_training_accuracy=True,
                  cost_function=CrossEntropyCost,
                  log_interval=1000):
 
@@ -26,61 +25,73 @@ class Evaluator(object):
         self.monitor_training_cost = monitor_training_cost
         self.monitor_training_accuracy = monitor_training_accuracy
         self.monitor_validation_cost = monitor_validation_cost
-        self.monitor_validation_accuracy = monitor_validation_accuracy
         self.log_interval = log_interval
         self.minibatches_count = 0
+        self.training_errors = []
         self.validation_errors = []
         self.training_costs = []
+        self.validation_costs = []
 
     def monitor(self, network):
         """ According to evaluator settings, evaluates and logs the
         cost and accuracy of a given network. """
 
         log.info("Training complete")
-        accuracy = None
 
-        if self.monitor_training_cost:
-            cost = self.total_cost(
-                self.cost_function, self.training_data, network
-            )
-            log.info("Training cost: \t%f", cost)
         if self.monitor_training_accuracy:
-            accuracy = self.accuracy(self.training_data, network, convert=True)
+            training_accuracy = self.accuracy(
+                self.training_data, network, convert=True
+            )
             log.info(
                 "Training accuracy: \t%d / %d",
-                accuracy, len(self.training_data[0])
+                training_accuracy, len(self.training_data[0])
             )
+            self.training_errors.append(
+                Utils.error_fraction(
+                    training_accuracy, len(self.training_data[0])
+                )
+            )
+
         if self.monitor_validation_cost:
-            cost = self.total_cost(
+            validation_cost = self.total_cost(
                 self.cost_function, self.validation_data, network, convert=True
             )
-            log.info("Validation cost: \t%f", cost)
-        if self.monitor_validation_accuracy:
-            accuracy = self.accuracy(self.validation_data, network)
             log.info(
-                "Validation accuracy: \t%d / %d",
-                accuracy, len(self.validation_data[0])
+                "Validation cost: %f",
+                validation_cost
             )
+            self.validation_costs.append(
+                validation_cost
+            )
+
+        validation_accuracy = self.accuracy(self.validation_data, network)
+        log.info(
+            "Validation accuracy: \t%d / %d",
+            validation_accuracy, len(self.validation_data[0])
+        )
+        self.validation_errors.append(
+            Utils.error_fraction(
+                validation_accuracy, len(self.validation_data[0])
+            )
+        )
 
         print
-        self.validation_errors.append(
-            1 - float(accuracy)/len(self.validation_data[0])
-        )
         self.minibatches_count = 0
-        return accuracy
+        return validation_accuracy
 
-    def log_training_cost(self, training_cost):
+    def log_training_costs(self, training_cost):
         self.minibatches_count += 1
-        if self.log_interval > 0 and \
-                self.minibatches_count % self.log_interval == 0:
-            log.info(
-                "Cost after %d minibatches is %f",
-                self.minibatches_count,
+        if self.monitor_training_cost:
+            if self.log_interval > 0 and \
+                    self.minibatches_count % self.log_interval == 0:
+                log.info(
+                    "Training cost after %d minibatches is %f",
+                    self.minibatches_count,
+                    training_cost/self.minibatches_count
+                )
+            self.training_costs.append(
                 training_cost/self.minibatches_count
             )
-        self.training_costs.append(
-            training_cost/self.minibatches_count
-        )
 
     @staticmethod
     def total_cost(cost_type, data, network, convert=False, chunk_size=5000):

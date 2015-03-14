@@ -1,3 +1,5 @@
+from utils import Utils
+
 __author__ = 'Azatris'
 
 import time
@@ -28,16 +30,16 @@ log.addHandler(handler_stream)
 tr_d, va_d, te_d = mnist_loader.load_data_revamped()
 
 # Subset the data
-data_size = 50000
-# tr_d = (np.asarray(tr_d[0][:data_size]), np.asarray(tr_d[1][:data_size]))
-# te_d = (np.asarray(te_d[0][:data_size]), np.asarray(te_d[1][:data_size]))
+data_size = 10000
+tr_d = (np.asarray(tr_d[0][:data_size]), np.asarray(tr_d[1][:data_size]))
+te_d = (np.asarray(te_d[0][:data_size]), np.asarray(te_d[1][:data_size]))
 
 # Hyperparameters
 lenargs = len(sys.argv)
 lr = float(sys.argv[1]) if lenargs > 1 else 0.1
 mom = float(sys.argv[2]) if lenargs > 2 else 0.6
 dec = float(sys.argv[3]) if lenargs > 3 else 0.01
-decthr = float(sys.argv[4]) if lenargs > 4 else 3
+decthr = float(sys.argv[4]) if lenargs > 4 else 2
 stopthr = float(sys.argv[5]) if lenargs > 5 else 10
 mb = float(sys.argv[6]) if lenargs > 6 else 10
 
@@ -49,9 +51,9 @@ scheduler = scheduler.DecayScheduler(
     decay_threshold=decthr,
     stop_threshold=stopthr
 )
-architecture = [784, 400, 400, 10]
+architecture = [784, 100, 10]
 net = network.Network(architecture, lr)
-errors, training_costs = trainer.sgd(
+validation_errors, training_costs = trainer.sgd(
     net,
     tr_d,
     mb,
@@ -59,14 +61,16 @@ errors, training_costs = trainer.sgd(
     evaluator=evaluator,
     scheduler=scheduler
 )
-error = (1 - float(evaluator.accuracy(te_d, net))/len(te_d[0]))*100
+val_err = Utils.error_fraction(evaluator.accuracy(va_d, net), len(va_d[0]))*100
+eva_err = Utils.error_fraction(evaluator.accuracy(te_d, net), len(te_d[0]))*100
 curr_time = time.strftime("%Y%m%d-%H%M%S")
 Io.save(
     net,
     "networks/" +
     curr_time +
     "_" + str(architecture).replace(' ', '') +
-    "_err" + str(error) +
+    "_valerr" + str(val_err) +
+    "_evaerr" + str(eva_err) +
     "_lr" + str(lr) +
     "_mom" + str(mom) +
     "_dec" + str(dec) +
@@ -76,10 +80,18 @@ Io.save(
     ".json"
 )
 pickle.dump(
-    training_costs,
-    open("networks/" + curr_time + "_mb_training_costs.p", "wb")
+    evaluator.training_costs,
+    open("networks/" + curr_time + "_training_costs.p", "wb")
 )
 pickle.dump(
-    errors,
-    open("networks/" + curr_time + "_errors.p", "wb")
+    evaluator.validation_costs,
+    open("networks/" + curr_time + "_validation_costs.p", "wb")
+)
+pickle.dump(
+    evaluator.training_errors,
+    open("networks/" + curr_time + "_training_errors.p", "wb")
+)
+pickle.dump(
+    evaluator.validation_errors,
+    open("networks/" + curr_time + "_validation_errors.p", "wb")
 )
