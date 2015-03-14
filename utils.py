@@ -32,7 +32,7 @@ class Utils(object):
 
         vectorized_digits = np.zeros((len(digits), 10))
         for idx, digit in enumerate(digits):
-            vectorized_digits[idx][digits] = 1.0
+            vectorized_digits[idx][digit] = 1.0
         return vectorized_digits
 
     @staticmethod
