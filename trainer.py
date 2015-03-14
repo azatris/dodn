@@ -22,6 +22,9 @@ class Trainer(object):
     a given network using training data and a particular cost
     function which to compute the errors with. """
 
+    def __init__(self):
+        np.random.seed(42)  # for consistent results
+
 
 class Mac(Trainer):
     @staticmethod  # Static for now.
@@ -330,8 +333,8 @@ class Mac(Trainer):
 
 class Sgd(Trainer):
     def __init__(self, cost=CrossEntropyCost):
-        np.random.seed(42)  # for consistent results
         self.cost = cost
+        super(Trainer, self).__init__()
 
     def sgd(self, network, training_data, minibatch_size,
             momentum=0.5, evaluator=None, scheduler=None):
