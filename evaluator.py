@@ -108,7 +108,7 @@ class Evaluator(object):
             if convert:
                 mini_labels = Utils.vectorize_digits(mini_labels)
             cost += cost_type.fn(a, mini_labels)
-        return cost/(chunks + 1)
+        return cost/np.ceil(chunks)
 
     @staticmethod
     def accuracy(data, network, convert=False, chunk_size=5000):
