@@ -12,9 +12,9 @@ class Evaluator(object):
     """ Evaluates and logs the cost and accuracy of a given network.
     """
 
-    def __init__(self, training_data, evaluation_data,
-                 monitor_evaluation_cost=False,
-                 monitor_evaluation_accuracy=True,
+    def __init__(self, training_data, validation_data,
+                 monitor_validation_cost=False,
+                 monitor_validation_accuracy=True,
                  monitor_training_cost=False,
                  monitor_training_accuracy=False,
                  cost_function=CrossEntropyCost,
@@ -22,14 +22,14 @@ class Evaluator(object):
 
         self.cost_function = cost_function
         self.training_data = training_data
-        self.evaluation_data = evaluation_data
+        self.validation_data = validation_data
         self.monitor_training_cost = monitor_training_cost
         self.monitor_training_accuracy = monitor_training_accuracy
-        self.monitor_evaluation_cost = monitor_evaluation_cost
-        self.monitor_evaluation_accuracy = monitor_evaluation_accuracy
+        self.monitor_validation_cost = monitor_validation_cost
+        self.monitor_validation_accuracy = monitor_validation_accuracy
         self.log_interval = log_interval
         self.minibatches_count = 0
-        self.errors = []
+        self.validation_errors = []
         self.training_costs = []
 
     def monitor(self, network):
@@ -50,20 +50,22 @@ class Evaluator(object):
                 "Training accuracy: \t%d / %d",
                 accuracy, len(self.training_data[0])
             )
-        if self.monitor_evaluation_cost:
+        if self.monitor_validation_cost:
             cost = self.total_cost(
-                self.cost_function, self.evaluation_data, network, convert=True
+                self.cost_function, self.validation_data, network, convert=True
             )
-            log.info("Evaluation cost: \t%f", cost)
-        if self.monitor_evaluation_accuracy:
-            accuracy = self.accuracy(self.evaluation_data, network)
+            log.info("Validation cost: \t%f", cost)
+        if self.monitor_validation_accuracy:
+            accuracy = self.accuracy(self.validation_data, network)
             log.info(
-                "Evaluation accuracy: \t%d / %d",
-                accuracy, len(self.evaluation_data[0])
+                "Validation accuracy: \t%d / %d",
+                accuracy, len(self.validation_data[0])
             )
 
         print
-        self.errors.append(1 - float(accuracy)/len(self.evaluation_data[0]))
+        self.validation_errors.append(
+            1 - float(accuracy)/len(self.validation_data[0])
+        )
         self.minibatches_count = 0
         return accuracy
 

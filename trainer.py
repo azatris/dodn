@@ -22,10 +22,8 @@ class Trainer(object):
     a given network using training data and a particular cost
     function which to compute the errors with. """
 
-    def __init__(self, cost=CrossEntropyCost):
-        np.random.seed(42)  # for consistent results
-        self.cost = cost
 
+class Mac(Trainer):
     @staticmethod  # Static for now.
     def mac(network, training_data, validation_data):
         """ Does method of auxiliary coordinates (MAC) training on a given
@@ -36,8 +34,6 @@ class Trainer(object):
                 w = w_flat.reshape(ws_shape)
 
                 # jacobian = np.dot(zs[idx_layer].T, zs[idx_layer+1] - labels)
-
-                # log.debug("w_top_jac jacobian %s", jacobian.shape)
 
                 activations = network.layers[idx_layer].feed_forward(
                     zs[idx_layer], w
@@ -142,7 +138,10 @@ class Trainer(object):
                     layer.weights,
                     method='Newton-CG',
                     jac=jac,
-                    options={'disp': True}
+                    options={
+                        'disp': True,
+                        'maxiter': None if step is 1 else 3
+                    }
                 )
                 log.debug("W step function minimized.")
 
@@ -270,7 +269,10 @@ class Trainer(object):
                         layer_zs,
                         method='Newton-CG',
                         jac=jac,
-                        options={'disp': True}
+                        options={
+                            'disp': True,
+                            'xtol': 0.00001 if step is 1 else 100
+                        }
                     )
                     log.debug("Z step function minimized. ")
 
@@ -291,8 +293,11 @@ class Trainer(object):
         tolerance = 0.01  # nested error threshold
         quadratic_penalty = 1  # aka mu
         nested_error_change = sys.maxint
+        step = 0
 
         while nested_error_change > tolerance:
+            step += 1
+
             log.info("Starting W-step...")
             w_step()
             log.info("W-step complete.")
@@ -307,7 +312,7 @@ class Trainer(object):
             # log.debug("Forcing garbage collection...")
             gc.collect()
 
-            quadratic_penalty *= 10  # TODO: 10 runs forever... but 1 too little
+            quadratic_penalty *= 10
 
             log.info(
                 "Quadratic penalty increased. New QP: %d",
@@ -321,6 +326,12 @@ class Trainer(object):
             )
 
             # TODO: compute nested_error_change
+
+
+class Sgd(Trainer):
+    def __init__(self, cost=CrossEntropyCost):
+        np.random.seed(42)  # for consistent results
+        self.cost = cost
 
     def sgd(self, network, training_data, minibatch_size,
             momentum=0.5, evaluator=None, scheduler=None):
@@ -349,7 +360,7 @@ class Trainer(object):
             # learning rate scaling it down by mini-batch size.
             for idx in xrange(0, len(network.layers)):
                 nabla_b[idx] = np.sum(deltas[idx], axis=0)
-                nabla_w[idx] = np.dot(activations[idx].T, deltas[idx]).T # TODO: This can be turned down to 1 transpose
+                nabla_w[idx] = np.dot(activations[idx].T, deltas[idx]) # TODO: This can be turned down to 1 transpose
             learning_rate_scaled = learning_rate/len(xs)
 
             # Update momentum layers
@@ -417,4 +428,4 @@ class Trainer(object):
 
         # For plotting use
         if evaluator is not None:
-            return evaluator.errors, evaluator.training_costs
+            return evaluator.validation_errors, evaluator.training_costs

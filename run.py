@@ -6,7 +6,7 @@ from network import Io
 import numpy as np
 
 
-from trainer import Trainer
+from trainer import Sgd
 import network
 import mnist_loader
 import scheduler
@@ -41,7 +41,7 @@ decthr = float(sys.argv[4]) if lenargs > 4 else 3
 stopthr = float(sys.argv[5]) if lenargs > 5 else 10
 mb = float(sys.argv[6]) if lenargs > 6 else 10
 
-trainer = Trainer()
+trainer = Sgd()
 evaluator = Evaluator(tr_d, va_d, log_interval=data_size/50)
 scheduler = scheduler.DecayScheduler(
     init_learning_rate=lr,
@@ -59,13 +59,14 @@ errors, training_costs = trainer.sgd(
     evaluator=evaluator,
     scheduler=scheduler
 )
+error = 1 - float(evaluator.accuracy(te_d, net))/len(te_d[0])
 curr_time = time.strftime("%Y%m%d-%H%M%S")
 Io.save(
     net,
-    "networks\\" +
+    "networks/" +
     curr_time +
     "_" + str(architecture).replace(' ', '') +
-    "_err" + str(min(errors)*100) +
+    "_err" + str(error) +
     "_lr" + str(lr) +
     "_mom" + str(mom) +
     "_dec" + str(dec) +
@@ -76,9 +77,9 @@ Io.save(
 )
 pickle.dump(
     training_costs,
-    open("networks\\" + curr_time + "_mb_training_costs.p", "wb")
+    open("networks/" + curr_time + "_mb_training_costs.p", "wb")
 )
 pickle.dump(
     training_costs,
-    open("networks\\" + curr_time + "_errors.p", "wb")
+    open("networks/" + curr_time + "_errors.p", "wb")
 )

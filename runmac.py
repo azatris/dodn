@@ -4,7 +4,7 @@ import logging
 import sys
 import numpy as np
 
-from trainer import Trainer
+from trainer import Mac
 import network
 import mnist_loader
 
@@ -25,8 +25,8 @@ tr_d, va_d, te_d = mnist_loader.load_data_revamped()
 data_size = 50000
 tr_d = (np.asarray(tr_d[0][:data_size]), np.asarray(tr_d[1][:data_size]))
 
-trainer = Trainer()
-architecture = [784, 200, 200, 200, 10]
+trainer = Mac()
+architecture = [784, 400, 400, 10]
 net = network.Network(architecture, 0.1)
 trainer.mac(
     net,
