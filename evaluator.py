@@ -1,3 +1,4 @@
+import math
 from utils import Utils, CrossEntropyCost
 
 __author__ = 'Azatris'
@@ -98,7 +99,7 @@ class Evaluator(object):
         """ Calculates the cost of given data against the network.
         :param convert: labels digit -> one-hot """
 
-        cost = 0.0
+        cost = []
         feats, labels = data
         chunks = len(feats)/chunk_size
         feats_split = np.split(feats, chunks)
@@ -107,8 +108,8 @@ class Evaluator(object):
             a = network.feed_forward(mini_feats)
             if convert:
                 mini_labels = Utils.vectorize_digits(mini_labels)
-            cost += cost_type.fn(a, mini_labels)
-        return cost/np.ceil(chunks)
+            cost.append(cost_type.fn(a, mini_labels))
+        return np.mean(cost)
 
     @staticmethod
     def accuracy(data, network, convert=False, chunk_size=5000):
