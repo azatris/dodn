@@ -2,8 +2,6 @@ import copy
 import sys
 import gc
 import evaluator as eva  # likely temporary, so it doesnt shadow sgd
-import multiprocessing
-from multiprocessing import Process
 
 from scipy.optimize import minimize
 
@@ -153,7 +151,7 @@ class Trainer(object):
                 network.layers[idx_layer].weights = res.x.reshape(ws_shape)
                 log.debug("Updated network with optimized weights.")
 
-        def z_step(z_from, z_to):
+        def z_step():
             def z_top_jac(flat_layer_zeds):
                 layer_zeds = flat_layer_zeds.reshape(zs_shape)
                 weights = network.layers[idx_layer_zs].weights
@@ -245,9 +243,7 @@ class Trainer(object):
 
             # log.debug("Trying to optimise zs.")
             # log.debug("zs shape %s", np.shape(zs))
-            old_zs = copy.deepcopy(
-                np.ndarray([zs_layer[z_from:z_to] for zs_layer in zs])
-            )
+            old_zs = copy.deepcopy(zs)
             for idx_layer_zs, layer_zs in reversed(list(enumerate(old_zs))):
 
                 # zs contains labels and inputs, but we don't optimise them
@@ -278,8 +274,7 @@ class Trainer(object):
                     )
                     log.debug("Z step function minimized. ")
 
-                    zs[idx_layer_zs][z_from:z_to] += \
-                        (res.x.reshape(zs_shape) - layer_zs)
+                    zs[idx_layer_zs] = res.x.reshape(zs_shape)
                     log.debug("Updated Z by optimized Z.")
 
         feats, labels = training_data
@@ -306,22 +301,7 @@ class Trainer(object):
             gc.collect()
 
             log.info("Starting Z-step...")
-            # z_step()
-
-            num_cpus = multiprocessing.cpu_count()
-            examples_per_cpu = len(training_data)/num_cpus
-            z_from, z_to = 0, examples_per_cpu
-            z_jobs = []
-            for i in xrange(num_cpus):
-                p = Process(target=z_step, args=(z_from, z_to))
-                z_jobs.append(p)
-                p.start()
-                z_from += examples_per_cpu
-                z_to += examples_per_cpu
-            for p in z_jobs:
-                p.join()
-
-
+            z_step()
             log.info("Z-step complete.")
 
             # log.debug("Forcing garbage collection...")
