@@ -59,7 +59,7 @@ errors, training_costs = trainer.sgd(
     evaluator=evaluator,
     scheduler=scheduler
 )
-error = 1 - float(evaluator.accuracy(te_d, net))/len(te_d[0])
+error = (1 - float(evaluator.accuracy(te_d, net))/len(te_d[0]))*100
 curr_time = time.strftime("%Y%m%d-%H%M%S")
 Io.save(
     net,
@@ -80,6 +80,6 @@ pickle.dump(
     open("networks/" + curr_time + "_mb_training_costs.p", "wb")
 )
 pickle.dump(
-    training_costs,
+    errors,
     open("networks/" + curr_time + "_errors.p", "wb")
 )
