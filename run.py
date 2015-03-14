@@ -30,9 +30,9 @@ log.addHandler(handler_stream)
 tr_d, va_d, te_d = mnist_loader.load_data_revamped()
 
 # Subset the data
-data_size = 10000
-tr_d = (np.asarray(tr_d[0][:data_size]), np.asarray(tr_d[1][:data_size]))
-te_d = (np.asarray(te_d[0][:data_size]), np.asarray(te_d[1][:data_size]))
+data_size = 50000
+# tr_d = (np.asarray(tr_d[0][:data_size]), np.asarray(tr_d[1][:data_size]))
+# te_d = (np.asarray(te_d[0][:data_size]), np.asarray(te_d[1][:data_size]))
 
 # Hyperparameters
 lenargs = len(sys.argv)
@@ -51,7 +51,7 @@ scheduler = scheduler.DecayScheduler(
     decay_threshold=decthr,
     stop_threshold=stopthr
 )
-architecture = [784, 100, 10]
+architecture = [784, 400, 400, 10]
 net = network.Network(architecture, lr)
 validation_errors, training_costs = trainer.sgd(
     net,
@@ -61,8 +61,12 @@ validation_errors, training_costs = trainer.sgd(
     evaluator=evaluator,
     scheduler=scheduler
 )
-val_err = Utils.error_fraction(evaluator.accuracy(va_d, net), len(va_d[0]))*100
-eva_err = Utils.error_fraction(evaluator.accuracy(te_d, net), len(te_d[0]))*100
+val_err = Utils.error_fraction(
+    evaluator.accuracy(va_d, net), len(va_d[0])
+)*100
+eva_err = Utils.error_fraction(
+    evaluator.accuracy(te_d, net), len(te_d[0])
+)*100
 curr_time = time.strftime("%Y%m%d-%H%M%S")
 Io.save(
     net,
