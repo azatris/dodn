@@ -100,14 +100,15 @@ class Evaluator(object):
 
         cost = 0.0
         feats, labels = data
-        feats_split = np.split(feats, len(feats)/chunk_size)
-        labels_split = np.split(labels, len(labels)/chunk_size)
+        chunks = len(feats)/chunk_size
+        feats_split = np.split(feats, chunks)
+        labels_split = np.split(labels, chunks)
         for mini_feats, mini_labels in zip(feats_split, labels_split):
             a = network.feed_forward(mini_feats)
             if convert:
                 mini_labels = Utils.vectorize_digits(mini_labels)
             cost += cost_type.fn(a, mini_labels)
-        return cost/len(feats)
+        return cost/(chunks + 1)
 
     @staticmethod
     def accuracy(data, network, convert=False, chunk_size=5000):
