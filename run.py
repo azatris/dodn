@@ -30,9 +30,9 @@ log.addHandler(handler_stream)
 tr_d, va_d, te_d = mnist_loader.load_data_revamped()
 
 # Subset the data
-data_size = 50
-tr_d = (np.asarray(tr_d[0][:data_size]), np.asarray(tr_d[1][:data_size]))
-te_d = (np.asarray(te_d[0][:data_size]), np.asarray(te_d[1][:data_size]))
+data_size = 50000
+# tr_d = (np.asarray(tr_d[0][:data_size]), np.asarray(tr_d[1][:data_size]))
+# te_d = (np.asarray(te_d[0][:data_size]), np.asarray(te_d[1][:data_size]))
 
 # Hyperparameters
 lenargs = len(sys.argv)
@@ -51,7 +51,7 @@ scheduler = scheduler.DecayScheduler(
     decay_threshold=decthr,
     stop_threshold=stopthr
 )
-architecture = [784, 15, 10]
+architecture = [784, 400, 400, 10]
 net = network.Network(architecture, lr)
 validation_errors, training_costs = trainer.sgd(
     net,
