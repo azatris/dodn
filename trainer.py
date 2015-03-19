@@ -51,9 +51,12 @@ class Mac(Trainer):
                 #     zs[idx_layer+1].shape
                 # )
 
-                jacobian = np.dot(
-                    zs[idx_layer].T,
-                    activations - zs[idx_layer+1]
+                jacobian = np.append(
+                    np.dot(
+                        zs[idx_layer].T,
+                        activations - zs[idx_layer+1]
+                    ),
+                    [np.ones(ws_shape[1])]
                 )
 
                 return np.ndarray.flatten(jacobian)
@@ -77,10 +80,13 @@ class Mac(Trainer):
                 #     de_dzk.shape, dzk_dfk.shape, zs[idx_layer].shape
                 # )
 
-                jacobian = np.dot(
-                    (de_dzk*dzk_dfk).T,
-                    zs[idx_layer]
-                ).T
+                jacobian = np.append(
+                    np.dot(
+                        (de_dzk*dzk_dfk).T,
+                        zs[idx_layer]
+                    ).T,
+                    [np.ones(ws_shape[1])]
+                )
 
                 return np.ndarray.flatten(jacobian)
 
@@ -127,7 +133,6 @@ class Mac(Trainer):
                     idx_layer, layer.weights.shape
                 )
 
-                ws_shape = layer.weights.shape
                 zed = zs[idx_layer+1]
 
                 if idx_layer == len(old_network.layers) - 1:
@@ -135,10 +140,13 @@ class Mac(Trainer):
                 else:
                     jac = w_hidden_jac
 
+                params = np.append(layer.weights, [layer.biases], axis=0)
+                ws_shape = params.shape
+
                 log.debug("Start minimizing W step function...")
                 res = minimize(
                     w_step_function,
-                    layer.weights,
+                    params,
                     method='Newton-CG',
                     jac=jac,
                     options={
@@ -149,13 +157,17 @@ class Mac(Trainer):
                 log.debug("W step function minimized.")
 
                 # log.debug("res.x %s", np.shape(res.x))
+                optimised_params = res.x.reshape(ws_shape)
 
-                network.layers[idx_layer].weights = res.x.reshape(ws_shape)
+                network.layers[idx_layer].weights = optimised_params[:-1]
+                network.layers[idx_layer].biases = optimised_params[-1]
+
                 log.debug("Updated network with optimized weights.")
 
         def z_step():
             def z_top_jac(flat_layer_zeds):
                 layer_zeds = flat_layer_zeds.reshape(zs_shape)
+
                 weights = network.layers[idx_layer_zs].weights
 
                 activations = \

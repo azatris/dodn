@@ -51,11 +51,12 @@ class Linear(Layer):
 
         super(Layer, self).__init__()
 
-    def feed_forward(self, inputs, weights_proxy=None):
-        if weights_proxy is not None:
-            # if len(np.shape(weights_proxy)) is 1:
-            #     weights_proxy = np.expand_dims(weights_proxy, axis=1)
-            return np.dot(inputs, weights_proxy)
+    def feed_forward(self, inputs, params_proxy=None):
+        if params_proxy is not None:
+            return np.dot(
+                np.append(inputs.T, [np.ones(inputs.T[0].shape)], axis=0).T,
+                params_proxy
+            )
         else:
             return np.dot(inputs, self.weights) + self.biases
 
@@ -75,9 +76,9 @@ class Sigmoid(Linear):
             neurons, inputs_per_neuron, weight_magnitude, weights, biases
         )
 
-    def feed_forward(self, inputs, weights_proxy=None):
+    def feed_forward(self, inputs, params_proxy=None):
         linear_activations = \
-            super(Sigmoid, self).feed_forward(inputs, weights_proxy)
+            super(Sigmoid, self).feed_forward(inputs, params_proxy)
         return 1.0 / (1.0 + np.exp(-linear_activations))
 
     def feed_backward(self, error, activation):
@@ -99,9 +100,9 @@ class Softmax(Linear):
             neurons, inputs_per_neuron, weight_magnitude, weights, biases
         )
 
-    def feed_forward(self, inputs, weights_proxy=None):
+    def feed_forward(self, inputs, params_proxy=None):
         linear_activation = \
-            super(Softmax, self).feed_forward(inputs, weights_proxy)
+            super(Softmax, self).feed_forward(inputs, params_proxy)
         # log.debug("Putting linear_activation into Softmax: shape %s", np.shape(linear_activation))
         return Utils.softmax(linear_activation)
 
