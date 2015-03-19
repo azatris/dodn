@@ -51,12 +51,14 @@ class Mac(Trainer):
                 #     zs[idx_layer+1].shape
                 # )
 
+                difference = activations - zs[idx_layer+1]
+
                 jacobian = np.append(
                     np.dot(
                         zs[idx_layer].T,
-                        activations - zs[idx_layer+1]
+                        difference
                     ),
-                    [np.ones(ws_shape[1])]
+                    [np.sum(difference, axis=0)]
                 )
 
                 return np.ndarray.flatten(jacobian)
@@ -80,12 +82,14 @@ class Mac(Trainer):
                 #     de_dzk.shape, dzk_dfk.shape, zs[idx_layer].shape
                 # )
 
+                de_dzk_dzk_dfk = de_dzk*dzk_dfk
+
                 jacobian = np.append(
                     np.dot(
-                        (de_dzk*dzk_dfk).T,
+                        de_dzk_dzk_dfk.T,
                         zs[idx_layer]
                     ).T,
-                    [np.ones(ws_shape[1])]
+                    [np.sum(de_dzk_dzk_dfk, axis=0)]
                 )
 
                 return np.ndarray.flatten(jacobian)
