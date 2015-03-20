@@ -22,13 +22,16 @@ class Trainer(object):
     a given network using training data and a particular cost
     function which to compute the errors with. """
 
-    def __init__(self):
+    def __init__(self, cost=CrossEntropyCost):
+        self.cost = cost
         np.random.seed(42)  # for consistent results
 
 
 class Mac(Trainer):
-    @staticmethod  # Static for now.
-    def mac(network, training_data, validation_data):
+    def __init__(self):
+        super(Mac, self).__init__()
+
+    def mac(self, network, training_data, validation_data):
         """ Does method of auxiliary coordinates (MAC) training on a given
         network and training data. """
 
@@ -305,6 +308,22 @@ class Mac(Trainer):
         log.info("Feats \t%s", feats.shape)
         log.info("Labels \t%s", labels.shape)
 
+        scheduler = ListScheduler(max_epochs=1)
+        Sgd().sgd(network, training_data, scheduler=scheduler)
+
+        log.info("Pretraining with SGD...")
+        scheduler = ListScheduler(max_epochs=1)
+        Sgd().sgd(network, training_data, scheduler=scheduler)
+
+        evaluator = eva.Evaluator(training_data, validation_data)
+        log.info(
+            "Training cost: \t%d", eva.Evaluator.total_cost(
+                self.cost, training_data, network
+            )
+        )
+        evaluator.monitor(network)
+
+
         zs = network.feed_forward(feats, return_all=True)
         zs[-1] = labels
         log.debug("Z initialized.")
@@ -313,6 +332,8 @@ class Mac(Trainer):
         quadratic_penalty = 1  # aka mu
         nested_error_change = sys.maxint
         step = 0
+
+
 
         while nested_error_change > tolerance:
             step += 1
@@ -339,20 +360,20 @@ class Mac(Trainer):
             )
 
             log.info(
-                "Accuracy: \t%d\n", eva.Evaluator.accuracy(
-                    validation_data, network
+                "Training cost: \t%d", eva.Evaluator.total_cost(
+                    self.cost, training_data, network
                 )
             )
+            evaluator.monitor(network)
 
             # TODO: compute nested_error_change
 
 
 class Sgd(Trainer):
-    def __init__(self, cost=CrossEntropyCost):
-        self.cost = cost
-        super(Trainer, self).__init__()
+    def __init__(self):
+        super(Sgd, self).__init__()
 
-    def sgd(self, network, training_data, minibatch_size,
+    def sgd(self, network, training_data, minibatch_size=10,
             momentum=0.5, evaluator=None, scheduler=None):
         """ Does stochastic gradient descent training on a given
         network and training data for a number of epochs (times). """
