@@ -47,7 +47,10 @@ class Linear(Layer):
                 -weight_magnitude, weight_magnitude,
                 (inputs_per_neuron, neurons)
             )
-            self.biases = np.zeros(neurons)
+            self.biases = np.random.uniform(
+                -weight_magnitude, weight_magnitude,
+                neurons
+            )
 
         super(Layer, self).__init__()
 
