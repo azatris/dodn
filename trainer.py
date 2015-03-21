@@ -158,7 +158,7 @@ class Mac(Trainer):
                     jac=jac,
                     options={
                         'disp': True,
-                        'maxiter': None if step is 1 else 3
+                        'xtol': 100
                     }
                 )
                 log.debug("W step function minimized.")
@@ -293,7 +293,7 @@ class Mac(Trainer):
                         jac=jac,
                         options={
                             'disp': True,
-                            'xtol': 0.00001 if step is 1 else 100
+                            'xtol': 1000
                         }
                     )
                     log.debug("Z step function minimized. ")
@@ -307,9 +307,6 @@ class Mac(Trainer):
         log.info("Starting MAC training with...")
         log.info("Feats \t%s", feats.shape)
         log.info("Labels \t%s", labels.shape)
-
-        scheduler = ListScheduler(max_epochs=1)
-        Sgd().sgd(network, training_data, scheduler=scheduler)
 
         log.info("Pretraining with SGD...")
         scheduler = ListScheduler(max_epochs=1)
@@ -333,8 +330,6 @@ class Mac(Trainer):
         nested_error_change = sys.maxint
         step = 0
 
-
-
         while nested_error_change > tolerance:
             step += 1
 
@@ -352,7 +347,7 @@ class Mac(Trainer):
             # log.debug("Forcing garbage collection...")
             gc.collect()
 
-            quadratic_penalty *= 10
+            quadratic_penalty *= 5
 
             log.info(
                 "Quadratic penalty increased. New QP: %d",
@@ -367,6 +362,26 @@ class Mac(Trainer):
             evaluator.monitor(network)
 
             # TODO: compute nested_error_change
+            nested_error_change = 0
+
+        log.info("Starting post-processing...")
+        while True:
+            activations = network.feed_forward(feats, return_all=True)
+            scalar_cost = self.cost.fn(activations[-1], labels)
+            error = self.cost.delta(activations[-1], labels)
+            log.info("scalar_cost %f", scalar_cost)
+            if scalar_cost < 0.001:
+                break
+            network.layers[-1].biases -= 0.1*np.sum(error, axis=0)
+            network.layers[-1].weights -= 0.1*np.dot(activations[-2].T, error)
+        log.info("Post-processing done.")
+
+        log.info(
+            "Training cost: \t%d", eva.Evaluator.total_cost(
+                self.cost, training_data, network
+            )
+        )
+        evaluator.monitor(network)
 
 
 class Sgd(Trainer):
