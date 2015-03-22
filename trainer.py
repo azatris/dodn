@@ -89,9 +89,9 @@ class Mac(Trainer):
 
                 jacobian = np.append(
                     np.dot(
-                        de_dzk_dzk_dfk.T,
-                        zs[idx_layer]
-                    ).T,
+                        zs[idx_layer].T,
+                        de_dzk_dzk_dfk,
+                    ),
                     [np.sum(de_dzk_dzk_dfk, axis=0)]
                 )
 
