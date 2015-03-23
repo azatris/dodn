@@ -74,16 +74,14 @@ class Mac(Trainer):
                 log.debug("Returnable w_step_f: %s", returnable)
                 return returnable
 
-            old_network = copy.deepcopy(network)
             log.debug("Start enumerating through layers...")
-            for idx_layer, layer in \
-                    reversed(list(enumerate(old_network.layers))):
+            for idx_layer, layer in reversed(list(enumerate(network.layers))):
                 log.debug(
                     "At layer number %d with shape %s",
                     idx_layer, layer.weights.shape
                 )
 
-                if idx_layer == len(old_network.layers) - 1:
+                if idx_layer == len(network.layers) - 1:
                     jac = w_top_jac
                 else:
                     jac = w_hidden_jac
@@ -119,7 +117,7 @@ class Mac(Trainer):
                 fk = network.layers[idx_layer_aux].feed_forward(layer_aux)
 
                 jacobian = np.dot(
-                    fk - old_aux[idx_layer_aux+1],
+                    fk - aux[idx_layer_aux+1],
                     network.layers[idx_layer_aux].weights.T
                 )
                 return np.ndarray.flatten(jacobian)
@@ -130,7 +128,7 @@ class Mac(Trainer):
                 fk = network.layers[idx_layer_aux].feed_forward(layer_aux)
 
                 jacobian = np.dot(
-                    (fk-old_aux[idx_layer_aux+1]) * (fk*(1-fk)),
+                    (fk-aux[idx_layer_aux+1]) * (fk*(1-fk)),
                     network.layers[idx_layer_aux].weights.T
                 )
                 return np.ndarray.flatten(jacobian)
@@ -139,22 +137,17 @@ class Mac(Trainer):
                 layer_aux = aux_flat.reshape(aux_shape)
 
                 returnable = np.sum((
-                    0.5 * (1 if idx_layer_aux is len(old_aux) - 2 else mu) *
+                    0.5 * (1 if idx_layer_aux is len(aux)-2 else mu) *
                     (
-                        old_aux[idx_layer_aux+1] -
+                        aux[idx_layer_aux+1] -
                         network.layers[idx_layer_aux].feed_forward(layer_aux)
                     )
                 )**2)
                 log.debug("Returnable a_step_f: %s", returnable)
                 return returnable
 
-            old_aux = copy.deepcopy(aux)
-            for idx_layer_aux, layer_aux in reversed(list(enumerate(old_aux))):
-
-                # aux contains labels and inputs, but we don't optimise them
-                if idx_layer_aux is not len(old_aux) - 1 \
-                        and idx_layer_aux is not 0:
-
+            for idx_layer_aux, layer_aux in enumerate(aux):
+                if idx_layer_aux not in [0, len(aux) - 1]:
                     log.debug(
                         "At layer number %d with shape %s",
                         idx_layer_aux, layer_aux.shape
@@ -162,7 +155,7 @@ class Mac(Trainer):
 
                     aux_shape = np.shape(layer_aux)
 
-                    if idx_layer_aux == len(old_aux) - 2:
+                    if idx_layer_aux == len(aux) - 2:
                         jac = aux_top_jac
                     else:
                         jac = aux_hidden_jac
