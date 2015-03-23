@@ -39,12 +39,12 @@ class Mac(Trainer):
             def w_top_jac(w_flat):
                 w = w_flat.reshape(ws_shape)
 
-                fkminus1 = layer.feed_forward(zs[idx_layer], w)
-                de_dak = fkminus1 - zs[idx_layer+1]
+                fkminus1 = layer.feed_forward(aux[idx_layer], w)
+                de_dak = fkminus1 - aux[idx_layer+1]
 
                 jacobian = np.append(
                     np.dot(
-                        zs[idx_layer].T,
+                        aux[idx_layer].T,
                         de_dak
                     ),
                     [np.sum(de_dak, axis=0)]
@@ -54,25 +54,25 @@ class Mac(Trainer):
             def w_hidden_jac(w_flat):
                 w = w_flat.reshape(ws_shape)
 
-                fkminus1 = layer.feed_forward(zs[idx_layer], w)
-                de_dfk = (fkminus1-zs[idx_layer+1]) * (fkminus1*(1-fkminus1))
+                fkminus1 = layer.feed_forward(aux[idx_layer], w)
+                de_dfk = (fkminus1-aux[idx_layer+1]) * (fkminus1*(1-fkminus1))
 
                 jacobian = np.append(
                     np.dot(
-                        zs[idx_layer].T,
+                        aux[idx_layer].T,
                         de_dfk,
                     ),
                     [np.sum(de_dfk, axis=0)]
                 )
                 return np.ndarray.flatten(jacobian)
 
-            def w_step_function(w_flat):
+            def w_cost(w_flat):
                 w = w_flat.reshape(ws_shape)
                 returnable = np.sum((
-                    zed - layer.feed_forward(zs[idx_layer], w)
+                    aux[idx_layer+1] - layer.feed_forward(aux[idx_layer], w)
                 )**2)
                 log.debug("Returnable w_step_f: %s", returnable)
-                return np.sum((zed - layer.feed_forward(zs[idx_layer], w))**2)
+                return returnable
 
             old_network = copy.deepcopy(network)
             log.debug("Start enumerating through layers...")
@@ -82,8 +82,6 @@ class Mac(Trainer):
                     "At layer number %d with shape %s",
                     idx_layer, layer.weights.shape
                 )
-
-                zed = zs[idx_layer+1]
 
                 if idx_layer == len(old_network.layers) - 1:
                     jac = w_top_jac
@@ -95,7 +93,7 @@ class Mac(Trainer):
 
                 log.debug("Start minimizing W step function...")
                 res = minimize(
-                    w_step_function,
+                    w_cost,
                     params,
                     method='Newton-CG',
                     jac=jac,
@@ -114,68 +112,65 @@ class Mac(Trainer):
 
                 log.debug("Updated network with optimized weights.")
 
-        def z_step():
-            def z_top_jac(flat_layer_zeds):
-                layer_zeds = flat_layer_zeds.reshape(zs_shape)
+        def a_step():
+            def aux_top_jac(aux_flat):
+                layer_aux = aux_flat.reshape(aux_shape)
 
-                fk = network.layers[idx_layer_zs].feed_forward(layer_zeds)
+                fk = network.layers[idx_layer_aux].feed_forward(layer_aux)
 
                 jacobian = np.dot(
-                    fk - old_zs[idx_layer_zs+1],
-                    network.layers[idx_layer_zs].weights.T
+                    fk - old_aux[idx_layer_aux+1],
+                    network.layers[idx_layer_aux].weights.T
                 )
                 return np.ndarray.flatten(jacobian)
 
-            def z_hidden_jac(flat_layer_zeds):
-                layer_zeds = flat_layer_zeds.reshape(zs_shape)
+            def aux_hidden_jac(aux_flat):
+                layer_aux = aux_flat.reshape(aux_shape)
 
-                fk = network.layers[idx_layer_zs].feed_forward(layer_zeds)
+                fk = network.layers[idx_layer_aux].feed_forward(layer_aux)
 
                 jacobian = np.dot(
-                    (fk-old_zs[idx_layer_zs+1]) * (fk*(1-fk)),
-                    network.layers[idx_layer_zs].weights.T
+                    (fk-old_aux[idx_layer_aux+1]) * (fk*(1-fk)),
+                    network.layers[idx_layer_aux].weights.T
                 )
                 return np.ndarray.flatten(jacobian)
 
-            def z_layer_step_function(flat_layer_zeds):
-                layer_zeds = flat_layer_zeds.reshape(zs_shape)
-
-                mu = 1 if idx_layer_zs is len(old_zs) - 2 else quadratic_penalty
+            def aux_cost(aux_flat):
+                layer_aux = aux_flat.reshape(aux_shape)
 
                 returnable = np.sum((
-                    0.5 * mu *
+                    0.5 * (1 if idx_layer_aux is len(old_aux) - 2 else mu) *
                     (
-                        old_zs[idx_layer_zs+1] -
-                        network.layers[idx_layer_zs].feed_forward(layer_zeds)
+                        old_aux[idx_layer_aux+1] -
+                        network.layers[idx_layer_aux].feed_forward(layer_aux)
                     )
                 )**2)
-                log.debug("Returnable z_step_f: %s", returnable)
+                log.debug("Returnable a_step_f: %s", returnable)
                 return returnable
 
-            old_zs = copy.deepcopy(zs)
-            for idx_layer_zs, layer_zs in reversed(list(enumerate(old_zs))):
+            old_aux = copy.deepcopy(aux)
+            for idx_layer_aux, layer_aux in reversed(list(enumerate(old_aux))):
 
-                # zs contains labels and inputs, but we don't optimise them
-                if idx_layer_zs is not len(old_zs) - 1 \
-                        and idx_layer_zs is not 0:
+                # aux contains labels and inputs, but we don't optimise them
+                if idx_layer_aux is not len(old_aux) - 1 \
+                        and idx_layer_aux is not 0:
 
                     log.debug(
                         "At layer number %d with shape %s",
-                        idx_layer_zs, layer_zs.shape
+                        idx_layer_aux, layer_aux.shape
                     )
 
-                    zs_shape = np.shape(layer_zs)
+                    aux_shape = np.shape(layer_aux)
 
-
-                    if idx_layer_zs == len(old_zs) - 2:
-                        jac = z_top_jac
+                    if idx_layer_aux == len(old_aux) - 2:
+                        jac = aux_top_jac
                     else:
-                        jac = z_hidden_jac
+                        jac = aux_hidden_jac
 
-                    log.debug("Start minimizing Z step function...")
+                    log.debug("Start minimizing A step cost function...")
                     res = minimize(
-                        z_layer_step_function,
-                        layer_zs,
+                        aux_cost,
+                        layer_aux,
                         method='Newton-CG',
                         jac=jac,
                         options={
@@ -183,10 +178,10 @@ class Mac(Trainer):
                             'xtol': 1000
                         }
                     )
-                    log.debug("Z step function minimized. ")
+                    log.debug("A step cost function minimized. ")
 
-                    zs[idx_layer_zs] = res.x.reshape(zs_shape)
-                    log.debug("Updated Z by optimized Z.")
+                    aux[idx_layer_aux] = res.x.reshape(aux_shape)
+                    log.debug("Updated aux by optimized aux.")
 
         feats, labels = training_data
         feats, labels = Utils.shuffle_in_unison(feats, labels)
@@ -208,12 +203,12 @@ class Mac(Trainer):
         evaluator.monitor(network)
 
 
-        zs = network.feed_forward(feats, return_all=True)
-        zs[-1] = labels
-        log.debug("Z initialized.")
+        aux = network.feed_forward(feats, return_all=True)
+        aux[-1] = labels
+        log.debug("aux initialized.")
 
         tolerance = 0.01  # nested error threshold
-        quadratic_penalty = 1  # aka mu
+        mu = 1  # aka mu
         nested_error_change = sys.maxint
         step = 0
 
@@ -227,18 +222,18 @@ class Mac(Trainer):
             # log.debug("Forcing garbage collection...")
             gc.collect()
 
-            log.info("Starting Z-step...")
-            z_step()
-            log.info("Z-step complete.")
+            log.info("Starting A-step...")
+            a_step()
+            log.info("A-step complete.")
 
             # log.debug("Forcing garbage collection...")
             gc.collect()
 
-            quadratic_penalty *= 5
+            mu *= 5
 
             log.info(
                 "Quadratic penalty increased. New QP: %d",
-                quadratic_penalty
+                mu
             )
 
             log.info(
