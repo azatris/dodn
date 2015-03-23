@@ -31,6 +31,30 @@ class Mac(Trainer):
     def __init__(self):
         super(Mac, self).__init__()
 
+    def postprocessing_step(self, feats, labels, network):
+        prev_scalar_cost = sys.maxint
+        while True:
+            activations = network.feed_forward(feats, return_all=True)
+            scalar_cost = self.cost.fn(activations[-1], labels)
+            log.info("scalar_cost %f", scalar_cost)
+            if abs(prev_scalar_cost - scalar_cost) < 0.001:
+                break
+            minibatch_size = 64
+            feats, labels = Utils.shuffle_in_unison(feats, labels)
+            feats_split = np.array_split(feats, len(feats) / minibatch_size)
+            labels_split = np.array_split(labels, len(labels) / minibatch_size)
+            eta = 0.1 / minibatch_size
+            for mini_feats, mini_labels in zip(feats_split, labels_split):
+                mini_activations = network.feed_forward(
+                    mini_feats, return_all=True
+                )
+                error = self.cost.delta(mini_activations[-1], mini_labels)
+                network.layers[-1].biases -= eta * np.sum(error, axis=0)
+                network.layers[-1].weights -= eta * np.dot(
+                    mini_activations[-2].T, error
+                )
+            prev_scalar_cost = scalar_cost
+
     def mac(self, network, training_data, validation_data):
         """ Does method of auxiliary coordinates (MAC) training on a given
         network and training data. """
@@ -240,17 +264,7 @@ class Mac(Trainer):
             nested_error_change = 0
 
         log.info("Starting post-processing...")
-        prev_scalar_cost = sys.maxint
-        while True:
-            activations = network.feed_forward(feats, return_all=True)
-            scalar_cost = self.cost.fn(activations[-1], labels)
-            error = self.cost.delta(activations[-1], labels)
-            log.info("scalar_cost %f", scalar_cost)
-            if abs(prev_scalar_cost - scalar_cost) < 0.001:
-                break
-            network.layers[-1].biases -= 0.1*np.sum(error, axis=0)
-            network.layers[-1].weights -= 0.1*np.dot(activations[-2].T, error)
-            prev_scalar_cost = scalar_cost
+        self.postprocessing_step(feats, labels, network)
         log.info("Post-processing done.")
 
         log.info(
