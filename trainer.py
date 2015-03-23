@@ -240,15 +240,17 @@ class Mac(Trainer):
             nested_error_change = 0
 
         log.info("Starting post-processing...")
+        prev_scalar_cost = sys.maxint
         while True:
             activations = network.feed_forward(feats, return_all=True)
             scalar_cost = self.cost.fn(activations[-1], labels)
             error = self.cost.delta(activations[-1], labels)
             log.info("scalar_cost %f", scalar_cost)
-            if scalar_cost < 0.001:
+            if abs(prev_scalar_cost - scalar_cost) < 0.001:
                 break
             network.layers[-1].biases -= 0.1*np.sum(error, axis=0)
             network.layers[-1].weights -= 0.1*np.dot(activations[-2].T, error)
+            prev_scalar_cost = scalar_cost
         log.info("Post-processing done.")
 
         log.info(
