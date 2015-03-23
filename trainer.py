@@ -46,13 +46,11 @@ class Mac(Trainer):
             eta = 0.1 / minibatch_size
             for mini_feats, mini_labels in zip(feats_split, labels_split):
                 mini_activations = network.feed_forward(
-                    mini_feats, return_all=True
-                )
+                    mini_feats, return_all=True)
                 error = self.cost.delta(mini_activations[-1], mini_labels)
                 network.layers[-1].biases -= eta * np.sum(error, axis=0)
                 network.layers[-1].weights -= eta * np.dot(
-                    mini_activations[-2].T, error
-                )
+                    mini_activations[-2].T, error)
             prev_scalar_cost = scalar_cost
 
     def mac(self, network, training_data, validation_data):
@@ -60,38 +58,27 @@ class Mac(Trainer):
         network and training data. """
 
         def w_step():
-            def w_top_jac(w_flat):
-                w = w_flat.reshape(ws_shape)
+            def w_top_jac(params_flat):
+                w = params_flat.reshape(params.shape)
 
                 fkminus1 = layer.feed_forward(aux[idx_layer], w)
                 de_dak = fkminus1 - aux[idx_layer+1]
 
-                jacobian = np.append(
-                    np.dot(
-                        aux[idx_layer].T,
-                        de_dak
-                    ),
-                    [np.sum(de_dak, axis=0)]
-                )
-                return np.ndarray.flatten(jacobian)
+                return np.ndarray.flatten(np.append(
+                    np.dot(aux[idx_layer].T, de_dak), [np.sum(de_dak, axis=0)]))
 
-            def w_hidden_jac(w_flat):
-                w = w_flat.reshape(ws_shape)
+            def w_hidden_jac(params_flat):
+                w = params_flat.reshape(params.shape)
 
                 fkminus1 = layer.feed_forward(aux[idx_layer], w)
                 de_dfk = (fkminus1-aux[idx_layer+1]) * (fkminus1*(1-fkminus1))
 
-                jacobian = np.append(
-                    np.dot(
-                        aux[idx_layer].T,
-                        de_dfk,
-                    ),
-                    [np.sum(de_dfk, axis=0)]
-                )
-                return np.ndarray.flatten(jacobian)
+                return np.ndarray.flatten(np.append(
+                    np.dot(aux[idx_layer].T, de_dfk), [np.sum(de_dfk, axis=0)]))
 
-            def w_cost(w_flat):
-                w = w_flat.reshape(ws_shape)
+            def w_cost(params_flat):
+                w = params_flat.reshape(params.shape)
+
                 returnable = np.sum((
                     aux[idx_layer+1] - layer.feed_forward(aux[idx_layer], w)
                 )**2)
@@ -100,10 +87,8 @@ class Mac(Trainer):
 
             log.debug("Start enumerating through layers...")
             for idx_layer, layer in reversed(list(enumerate(network.layers))):
-                log.debug(
-                    "At layer number %d with shape %s",
-                    idx_layer, layer.weights.shape
-                )
+                log.debug("At layer number %d with shape %s",
+                          idx_layer, layer.weights.shape)
 
                 if idx_layer == len(network.layers) - 1:
                     jac = w_top_jac
@@ -111,24 +96,15 @@ class Mac(Trainer):
                     jac = w_hidden_jac
 
                 params = np.append(layer.weights, [layer.biases], axis=0)
-                ws_shape = params.shape
 
                 log.debug("Start minimizing W step function...")
-                res = minimize(
-                    w_cost,
-                    params,
-                    method='Newton-CG',
-                    jac=jac,
-                    options={
-                        'disp': True,
-                        'xtol': 100
-                    }
-                )
+                res = minimize(w_cost, params,
+                               method='Newton-CG',
+                               jac=jac,
+                               options={'disp': True, 'xtol': 100})
                 log.debug("W step function minimized.")
 
-                # log.debug("res.x %s", np.shape(res.x))
-                optimised_params = res.x.reshape(ws_shape)
-
+                optimised_params = res.x.reshape(params.shape)
                 network.layers[idx_layer].weights = optimised_params[:-1]
                 network.layers[idx_layer].biases = optimised_params[-1]
 
@@ -138,46 +114,35 @@ class Mac(Trainer):
             def aux_top_jac(aux_flat):
                 layer_aux = aux_flat.reshape(aux_shape)
 
-                fk = network.layers[idx_layer_aux].feed_forward(layer_aux)
-
-                jacobian = np.dot(
-                    fk - aux[idx_layer_aux+1],
-                    network.layers[idx_layer_aux].weights.T
-                )
-                return np.ndarray.flatten(jacobian)
+                return np.ndarray.flatten(np.dot(
+                    layer.feed_forward(layer_aux) - aux[idx_layer_aux+1],
+                    layer.weights.T))
 
             def aux_hidden_jac(aux_flat):
                 layer_aux = aux_flat.reshape(aux_shape)
 
-                fk = network.layers[idx_layer_aux].feed_forward(layer_aux)
+                fk = layer.feed_forward(layer_aux)
 
-                jacobian = np.dot(
-                    (fk-aux[idx_layer_aux+1]) * (fk*(1-fk)),
-                    network.layers[idx_layer_aux].weights.T
-                )
-                return np.ndarray.flatten(jacobian)
+                return np.ndarray.flatten(np.dot(
+                    (fk-aux[idx_layer_aux+1]) * (fk*(1-fk)), layer.weights.T))
 
             def aux_cost(aux_flat):
                 layer_aux = aux_flat.reshape(aux_shape)
 
                 returnable = np.sum((
-                    0.5 * (1 if idx_layer_aux is len(aux)-2 else mu) *
-                    (
-                        aux[idx_layer_aux+1] -
-                        network.layers[idx_layer_aux].feed_forward(layer_aux)
-                    )
+                    0.5 * (1 if idx_layer_aux is len(aux)-2 else mu) * (
+                        aux[idx_layer_aux+1] - layer.feed_forward(layer_aux))
                 )**2)
                 log.debug("Returnable a_step_f: %s", returnable)
                 return returnable
 
             for idx_layer_aux, layer_aux in enumerate(aux):
                 if idx_layer_aux not in [0, len(aux) - 1]:
-                    log.debug(
-                        "At layer number %d with shape %s",
-                        idx_layer_aux, layer_aux.shape
-                    )
+                    log.debug("At layer number %d with shape %s",
+                              idx_layer_aux, layer_aux.shape)
 
                     aux_shape = np.shape(layer_aux)
+                    layer = network.layers[idx_layer_aux]
 
                     if idx_layer_aux == len(aux) - 2:
                         jac = aux_top_jac
@@ -185,16 +150,10 @@ class Mac(Trainer):
                         jac = aux_hidden_jac
 
                     log.debug("Start minimizing A step cost function...")
-                    res = minimize(
-                        aux_cost,
-                        layer_aux,
-                        method='Newton-CG',
-                        jac=jac,
-                        options={
-                            'disp': True,
-                            'xtol': 1000
-                        }
-                    )
+                    res = minimize(aux_cost, layer_aux,
+                                   method='Newton-CG',
+                                   jac=jac,
+                                   options={'disp': True, 'xtol': 1000})
                     log.debug("A step cost function minimized. ")
 
                     aux[idx_layer_aux] = res.x.reshape(aux_shape)
@@ -212,13 +171,9 @@ class Mac(Trainer):
         Sgd().sgd(network, training_data, scheduler=scheduler)
 
         evaluator = eva.Evaluator(training_data, validation_data)
-        log.info(
-            "Training cost: \t%d", eva.Evaluator.total_cost(
-                self.cost, training_data, network
-            )
-        )
+        log.info("Training cost: \t%d",
+                 evaluator.total_cost(self.cost, training_data, network))
         evaluator.monitor(network)
-
 
         aux = network.feed_forward(feats, return_all=True)
         aux[-1] = labels
@@ -246,32 +201,23 @@ class Mac(Trainer):
             # log.debug("Forcing garbage collection...")
             gc.collect()
 
-            mu *= 5
+            mu *= 10
 
-            log.info(
-                "Quadratic penalty increased. New QP: %d",
-                mu
-            )
+            log.info("Quadratic penalty increased. New QP: %d", mu)
 
-            log.info(
-                "Training cost: \t%d", eva.Evaluator.total_cost(
-                    self.cost, training_data, network
-                )
-            )
+            log.info("Training cost: \t%d",
+                     evaluator.total_cost(self.cost, training_data, network))
             evaluator.monitor(network)
 
             # TODO: compute nested_error_change
-            nested_error_change = 0
+            nested_error_change -= sys.maxint/2
 
         log.info("Starting post-processing...")
         self.postprocessing_step(feats, labels, network)
         log.info("Post-processing done.")
 
-        log.info(
-            "Training cost: \t%d", eva.Evaluator.total_cost(
-                self.cost, training_data, network
-            )
-        )
+        log.info("Training cost: \t%d",
+                 evaluator.total_cost(self.cost, training_data, network))
         evaluator.monitor(network)
 
 
