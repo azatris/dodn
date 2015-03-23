@@ -39,99 +39,42 @@ class Mac(Trainer):
             def w_top_jac(w_flat):
                 w = w_flat.reshape(ws_shape)
 
-                # jacobian = np.dot(zs[idx_layer].T, zs[idx_layer+1] - labels)
-
-                activations = network.layers[idx_layer].feed_forward(
-                    zs[idx_layer], w
-                )
-
-                # log.debug(
-                #     "w_top_jac zs[idx_layer] "
-                #     "%s activations %s, "
-                #     "zs[idx_layer+1] %s",
-                #     zs[idx_layer].shape,
-                #     activations.shape,
-                #     zs[idx_layer+1].shape
-                # )
-
-                difference = activations - zs[idx_layer+1]
+                fkminus1 = layer.feed_forward(zs[idx_layer], w)
+                de_dak = fkminus1 - zs[idx_layer+1]
 
                 jacobian = np.append(
                     np.dot(
                         zs[idx_layer].T,
-                        difference
+                        de_dak
                     ),
-                    [np.sum(difference, axis=0)]
+                    [np.sum(de_dak, axis=0)]
                 )
-
                 return np.ndarray.flatten(jacobian)
 
             def w_hidden_jac(w_flat):
                 w = w_flat.reshape(ws_shape)
 
-                activations = layer.feed_forward(zs[idx_layer], w)
-
-                de_dzk = activations - zs[idx_layer+1]
-
-                # log.debug(
-                #     "w_hidden_jac activations %s ",
-                #     activations.shape
-                # )jacobian
-
-                dzk_dfk = activations*(1 - activations)
-
-                # log.debug(
-                #     "w_hidden_jac de_dzk %s dzk_dfk %s, zs[idx_layer] %s",
-                #     de_dzk.shape, dzk_dfk.shape, zs[idx_layer].shape
-                # )
-
-                de_dzk_dzk_dfk = de_dzk*dzk_dfk
+                fkminus1 = layer.feed_forward(zs[idx_layer], w)
+                de_dfk = (fkminus1-zs[idx_layer+1]) * (fkminus1*(1-fkminus1))
 
                 jacobian = np.append(
                     np.dot(
                         zs[idx_layer].T,
-                        de_dzk_dzk_dfk,
+                        de_dfk,
                     ),
-                    [np.sum(de_dzk_dzk_dfk, axis=0)]
+                    [np.sum(de_dfk, axis=0)]
                 )
-
                 return np.ndarray.flatten(jacobian)
 
             def w_step_function(w_flat):
                 w = w_flat.reshape(ws_shape)
+                returnable = np.sum((
+                    zed - layer.feed_forward(zs[idx_layer], w)
+                )**2)
+                log.debug("Returnable w_step_f: %s", returnable)
+                return np.sum((zed - layer.feed_forward(zs[idx_layer], w))**2)
 
-                # log.debug("W step function initiated.")
-
-                # log.debug(
-                #     "Feeding forward %s using weights %s",
-                #     zs[idx_layer].shape, w.shape
-                # )
-
-                activations = layer.feed_forward(zs[idx_layer], w)
-                # log.debug("activations %s", activations.shape)
-
-                difference = zed - activations
-                # log.debug("difference %s", difference.shape)
-
-                square = difference**2
-                # log.debug("square %s", square.shape)
-
-                value = np.sum(square)
-                log.debug("W step function value: %s", value)
-
-                # time.sleep(0.1)
-                return value
-
-            # log.debug(
-            #     "Deep copying old network with shape \t%s",
-            #     np.shape(network.layers)
-            # )
             old_network = copy.deepcopy(network)
-            # log.debug(
-            #     "Old network copy has shape \t%s",
-            #     np.shape(network.layers)
-            # )
-
             log.debug("Start enumerating through layers...")
             for idx_layer, layer in \
                     reversed(list(enumerate(old_network.layers))):
@@ -175,95 +118,40 @@ class Mac(Trainer):
             def z_top_jac(flat_layer_zeds):
                 layer_zeds = flat_layer_zeds.reshape(zs_shape)
 
-                weights = network.layers[idx_layer_zs].weights
-
-                activations = \
-                    network.layers[idx_layer_zs].feed_forward(layer_zeds)
-
-                # log.debug("z_top_jac weights %s labels %s, oldzs %s",
-                #           weights.shape,
-                #           labels.shape,
-                #           old_zs[idx_layer_zs].shape
-                # )
+                fk = network.layers[idx_layer_zs].feed_forward(layer_zeds)
 
                 jacobian = np.dot(
-                    activations - old_zs[idx_layer_zs+1],
-                    weights.T
+                    fk - old_zs[idx_layer_zs+1],
+                    network.layers[idx_layer_zs].weights.T
                 )
-
-                # log.debug("z_top_jac jacobian %s", jacobian.shape)
-
                 return np.ndarray.flatten(jacobian)
 
             def z_hidden_jac(flat_layer_zeds):
                 layer_zeds = flat_layer_zeds.reshape(zs_shape)
 
-                # log.debug(
-                #     "BLA1: %s",
-                #     network.layers[idx_layer_zs-1].weights.shape
-                # )
-                # log.debug("BLA2: %s", old_zs[idx_layer_zs-1].shape)
+                fk = network.layers[idx_layer_zs].feed_forward(layer_zeds)
 
-                activations = network.layers[idx_layer_zs].feed_forward(
-                    layer_zeds
+                jacobian = np.dot(
+                    (fk-old_zs[idx_layer_zs+1]) * (fk*(1-fk)),
+                    network.layers[idx_layer_zs].weights.T
                 )
-
-                # log.debug(
-                #     "z_hidden_jac activation %s ",
-                #     activations.shape
-                # )
-
-                de_dzkplus1 = activations - old_zs[idx_layer_zs+1]
-
-                dzkplus1_dfkplus1 = activations*(1 - activations)
-
-                weights = network.layers[idx_layer_zs].weights
-
-                # log.debug(
-                #     "z_hidden_jac de_dzkplus1 %s "
-                #     "dzkplus1_dfkplus1 %s "
-                #     "weights %s",
-                #     de_dzkplus1.shape, dzkplus1_dfkplus1.shape, weights.shape
-                # )
-
-                # if that work can just transpose the whole thing instead
-                jacobian = np.dot(de_dzkplus1*dzkplus1_dfkplus1, weights.T)
-
-                # log.debug("z_hidden_jac jacobian %s", jacobian.shape)
-
                 return np.ndarray.flatten(jacobian)
 
             def z_layer_step_function(flat_layer_zeds):
                 layer_zeds = flat_layer_zeds.reshape(zs_shape)
 
-                log.debug("STEP FUNCTION count: %d", count[0])
-                count[0] += 1
+                mu = 1 if idx_layer_zs is len(old_zs) - 2 else quadratic_penalty
 
-                multiplier = quadratic_penalty
-
-                # log.debug("idx_layer_zs-1 %d", idx_layer_zs-1)
-                # log.debug("idx_layer_z %d", idx_layer_zs)
-                # log.debug("old_zs[idx_layer_zs-1] %s",
-                #           np.shape(old_zs[idx_layer_zs-1]))
-                # log.debug("layer_zeds %s", np.shape(layer_zeds))
-
-                activations = network.layers[idx_layer_zs].feed_forward(
-                    layer_zeds
-                )
-                if idx_layer_zs is len(old_zs) - 2:
-                    multiplier = 1
-
-                # log.debug("Activation shape: %s", np.shape(activations))
-
-                returnable = np.sum(
-                    (multiplier*0.5*(old_zs[idx_layer_zs+1] - activations))**2
-                )
+                returnable = np.sum((
+                    0.5 * mu *
+                    (
+                        old_zs[idx_layer_zs+1] -
+                        network.layers[idx_layer_zs].feed_forward(layer_zeds)
+                    )
+                )**2)
                 log.debug("Returnable z_step_f: %s", returnable)
-
                 return returnable
 
-            # log.debug("Trying to optimise zs.")
-            # log.debug("zs shape %s", np.shape(zs))
             old_zs = copy.deepcopy(zs)
             for idx_layer_zs, layer_zs in reversed(list(enumerate(old_zs))):
 
@@ -278,7 +166,6 @@ class Mac(Trainer):
 
                     zs_shape = np.shape(layer_zs)
 
-                    count = [0]
 
                     if idx_layer_zs == len(old_zs) - 2:
                         jac = z_top_jac
