@@ -25,11 +25,11 @@ tr_d, va_d, te_d = mnist_loader.load_data_revamped()
 data_size = 5000
 tr_d = (np.asarray(tr_d[0][:data_size]), np.asarray(tr_d[1][:data_size]))
 
-trainer = Mac()
+
 architecture = [784, 400, 400, 10]
 net = network.Network(architecture, 0.1)
-trainer.mac(
+trainer = Mac(
     net,
     tr_d,
-    va_d
-)
+    va_d)
+trainer.train()
