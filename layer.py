@@ -8,6 +8,7 @@ import numpy as np
 
 log = logging.root
 
+
 class Layer(object):
     """ Abstract Layer. Layer has weights and biases. """
     __metaclass__ = ABCMeta
