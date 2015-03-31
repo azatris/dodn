@@ -76,7 +76,16 @@ class Mac(Trainer):
                 return np.ndarray.flatten(np.append(
                     np.dot(aux[idx_layer].T, de_dfk), [np.sum(de_dfk, axis=0)]))
 
-            def w_cost(params_flat):
+            def w_top_cost(params_flat):
+                w = params_flat.reshape(params.shape)
+
+                returnable = np.sum(self.cost.fn(
+                    layer.feed_forward(aux[idx_layer], w),
+                    aux[idx_layer+1]))
+                log.debug("Returnable w_step_f: %s", returnable)
+                return returnable
+
+            def w_hidden_cost(params_flat):
                 w = params_flat.reshape(params.shape)
 
                 returnable = np.sum((
@@ -92,8 +101,10 @@ class Mac(Trainer):
 
                 if idx_layer == len(network.layers) - 1:
                     jac = w_top_jac
+                    w_cost = w_top_cost
                 else:
                     jac = w_hidden_jac
+                    w_cost = w_hidden_cost
 
                 params = np.append(layer.weights, [layer.biases], axis=0)
 
@@ -126,14 +137,20 @@ class Mac(Trainer):
                 return np.ndarray.flatten(np.dot(
                     (fk-aux[idx_layer_aux+1]) * (fk*(1-fk)), layer.weights.T))
 
-            def aux_cost(aux_flat):
+            def aux_top_cost(aux_flat):
                 layer_aux = aux_flat.reshape(aux_shape)
 
-                returnable = np.sum((
-                    0.5 * (1 if idx_layer_aux is len(aux)-2 else mu) * (
-                        aux[idx_layer_aux+1] - layer.feed_forward(layer_aux))
-                )**2)
-                log.debug("Returnable a_step_f: %s", returnable)
+                returnable = np.sum(self.cost.fn(layer.feed_forward(layer_aux),
+                                                 aux[idx_layer_aux+1]))
+                log.debug("Returnable top a_step_f: %s", returnable)
+                return returnable
+
+            def aux_hidden_cost(aux_flat):
+                layer_aux = aux_flat.reshape(aux_shape)
+
+                returnable = np.sum(mu*(
+                    aux[idx_layer_aux+1] - layer.feed_forward(layer_aux))**2)
+                log.debug("Returnable hidden a_step_f: %s", returnable)
                 return returnable
 
             for idx_layer_aux, layer_aux in enumerate(aux):
@@ -146,8 +163,10 @@ class Mac(Trainer):
 
                     if idx_layer_aux == len(aux) - 2:
                         jac = aux_top_jac
+                        aux_cost = aux_top_cost
                     else:
                         jac = aux_hidden_jac
+                        aux_cost = aux_hidden_cost
 
                     log.debug("Start minimizing A step cost function...")
                     res = minimize(aux_cost, layer_aux,
