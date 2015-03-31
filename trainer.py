@@ -59,16 +59,7 @@ class Mac(Trainer):
             return np.ndarray.flatten(np.append(np.dot(
                 self.aux[idx_layer].T, de_dfk), [np.sum(de_dfk, axis=0)]))
 
-        def w_top_cost(params_flat):
-            w = params_flat.reshape(params.shape)
-
-            returnable = np.sum(self.cost.fn(
-                layer.feed_forward(self.aux[idx_layer], w),
-                self.aux[idx_layer+1]))
-            log.debug("Returnable w_step_f: %s", returnable)
-            return returnable
-
-        def w_hidden_cost(params_flat):
+        def w_cost(params_flat):
             w = params_flat.reshape(params.shape)
 
             returnable = np.sum((
@@ -85,15 +76,13 @@ class Mac(Trainer):
 
             if idx_layer == len(self.network.layers) - 1:
                 jac = w_top_jac
-                cost = w_top_cost
             else:
                 jac = w_hidden_jac
-                cost = w_hidden_cost
 
             params = np.append(layer.weights, [layer.biases], axis=0)
 
             log.debug("Start minimizing W step function...")
-            res = minimize(cost, params,
+            res = minimize(w_cost, params,
                            method='Newton-CG',
                            jac=jac,
                            options={'disp': True, 'xtol': 100})
@@ -121,20 +110,14 @@ class Mac(Trainer):
             return np.ndarray.flatten(np.dot(
                 (fk-self.aux[idx_layer_aux+1]) * (fk*(1-fk)), layer.weights.T))
 
-        def aux_top_cost(aux_flat):
+        def aux_cost(aux_flat):
             layer_aux = aux_flat.reshape(aux_shape)
 
-            returnable = np.sum(self.cost.fn(layer.feed_forward(layer_aux),
-                                             self.aux[idx_layer_aux+1]))
-            log.debug("Returnable top a_step_f: %s", returnable)
-            return returnable
-
-        def aux_hidden_cost(aux_flat):
-            layer_aux = aux_flat.reshape(aux_shape)
-
-            returnable = np.sum((self.mu*(
-                self.aux[idx_layer_aux+1] - layer.feed_forward(layer_aux)))**2)
-            log.debug("Returnable hidden a_step_f: %s", returnable)
+            returnable = np.sum((
+                0.5 * (1 if idx_layer_aux is len(self.aux)-2 else self.mu) * (
+                    self.aux[idx_layer_aux+1] - layer.feed_forward(layer_aux))
+            )**2)
+            log.debug("Returnable a_step_f: %s", returnable)
             return returnable
 
         for idx_layer_aux, layer_aux in enumerate(self.aux):
@@ -145,16 +128,13 @@ class Mac(Trainer):
                 aux_shape = np.shape(layer_aux)
                 layer = self.network.layers[idx_layer_aux]
 
-
                 if idx_layer_aux == len(self.aux) - 2:
                     jac = aux_top_jac
-                    cost = aux_top_cost
                 else:
                     jac = aux_hidden_jac
-                    cost = aux_hidden_cost
 
                 log.debug("Start minimizing A step cost function...")
-                res = minimize(cost, layer_aux,
+                res = minimize(aux_cost, layer_aux,
                                method='Newton-CG',
                                jac=jac,
                                options={'disp': True, 'xtol': 1000})
@@ -201,9 +181,9 @@ class Mac(Trainer):
         log.info("Feats \t%s", feats.shape)
         log.info("Labels \t%s", labels.shape)
 
-        log.debug("Pretraining with SGD...")
-        self.pretrain()
-        log.debug("Pretraining done.")
+        # log.debug("Pretraining with SGD...")
+        # self.pretrain()
+        # log.debug("Pretraining done.")
 
         self.log_all()
 
@@ -240,7 +220,7 @@ class Mac(Trainer):
             self.log_all()
 
             # TODO: compute nested_error_change
-            nested_error_change -= sys.maxint/1.5
+            nested_error_change -= sys.maxint/2
 
         log.info("Starting post-processing...")
         self.postprocessing_step(feats, labels)
