@@ -53,7 +53,7 @@ class Mac(Trainer):
                     mini_activations[-2].T, error)
             prev_scalar_cost = scalar_cost
 
-    def mac(self, network, training_data, validation_data):
+    def mac(self, network, training_data, validation_data, evaluator=None):
         """ Does method of auxiliary coordinates (MAC) training on a given
         network and training data. """
 
@@ -129,8 +129,8 @@ class Mac(Trainer):
             def aux_cost(aux_flat):
                 layer_aux = aux_flat.reshape(aux_shape)
 
-                returnable = np.sum((
-                    0.5 * (1 if idx_layer_aux is len(aux)-2 else mu) * (
+                returnable = np.sum(
+                    0.5 * (1 if idx_layer_aux is len(aux)-2 else mu) * ((
                         aux[idx_layer_aux+1] - layer.feed_forward(layer_aux))
                 )**2)
                 log.debug("Returnable a_step_f: %s", returnable)
@@ -166,14 +166,14 @@ class Mac(Trainer):
         log.info("Feats \t%s", feats.shape)
         log.info("Labels \t%s", labels.shape)
 
-        log.info("Pretraining with SGD...")
-        scheduler = ListScheduler(max_epochs=1)
-        Sgd().sgd(network, training_data, scheduler=scheduler)
-
-        evaluator = eva.Evaluator(training_data, validation_data)
-        log.info("Training cost: \t%d",
-                 evaluator.total_cost(self.cost, training_data, network))
-        evaluator.monitor(network)
+        # log.info("Pretraining with SGD...")
+        # scheduler = ListScheduler(max_epochs=1)
+        # Sgd().sgd(network, training_data, scheduler=scheduler)
+        #
+        # t_cost = evaluator.total_cost(self.cost, training_data, network)
+        # log.info("Training cost: \t%f", t_cost)
+        # evaluator.training_costs.append(t_cost)
+        # evaluator.monitor(network)
 
         aux = network.feed_forward(feats, return_all=True)
         aux[-1] = labels
@@ -205,20 +205,22 @@ class Mac(Trainer):
 
             log.info("Quadratic penalty increased. New QP: %d", mu)
 
-            log.info("Training cost: \t%d",
-                     evaluator.total_cost(self.cost, training_data, network))
+            t_cost = evaluator.total_cost(self.cost, training_data, network)
+            log.info("Training cost: \t%f", t_cost)
+            evaluator.training_costs.append(t_cost)
             evaluator.monitor(network)
 
             # TODO: compute nested_error_change
             nested_error_change -= sys.maxint/2
 
-        log.info("Starting post-processing...")
-        self.postprocessing_step(feats, labels, network)
-        log.info("Post-processing done.")
-
-        log.info("Training cost: \t%d",
-                 evaluator.total_cost(self.cost, training_data, network))
-        evaluator.monitor(network)
+        # log.info("Starting post-processing...")
+        # self.postprocessing_step(feats, labels, network)
+        # log.info("Post-processing done.")
+        #
+        # t_cost = evaluator.total_cost(self.cost, training_data, network)
+        # log.info("Training cost: \t%f", t_cost)
+        # evaluator.training_costs.append(t_cost)
+        # evaluator.monitor(network)
 
 
 class Sgd(Trainer):
